@@ -1,6 +1,8 @@
 # TypeScript client through grpc-bridge
 
-This example uses grpc-bridge's public `interceptTransport()` with `contractClientInterceptor` to bind Proto Contract metadata to each generated Connect service client over a shared grpc-bridge connection. Each RPC travels from Node.js 24 over a WebSocket tunnel, through the Go bridge, to a native gRPC server.
+This example uses grpc-bridge's public `interceptTransport()` with a generated `contractInterceptor` to bind Proto Contract metadata to each generated Connect service client over a shared grpc-bridge connection. Each RPC travels from Node.js 24 over a WebSocket tunnel, through the Go bridge, to a native gRPC server.
+
+The Docker build checks the proto against `contracts/demo.echo.json` and runs `proto-contract generate --lock /contracts/demo.echo.json --lang typescript --out gen/echo_contract.ts`. The normal client imports this generated interceptor without specifying an API name or version. Remaining explicit versions are deliberate matrix test fixtures for older, newer, and incompatible clients.
 
 From the repository root, run the complete 20-combination matrix:
 

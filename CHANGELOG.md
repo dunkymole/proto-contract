@@ -4,6 +4,8 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 ## Unreleased
 
+- Generate service-specific TypeScript contract interceptors from lock files with `proto-contract generate`; application examples import generated versions.
+
 - TypeScript contract interceptor for grpc-bridge and a real bridge client in the expanded 5-by-4 interoperability matrix.
 
 - Initial contract compiler with deterministic reachable-graph locks.
