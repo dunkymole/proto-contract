@@ -1,0 +1,10 @@
+.idea/
+.vscode/
+bin/
+build/
+target/
+obj/
+*.user
+*.suo
+__pycache__/
+*.pyc

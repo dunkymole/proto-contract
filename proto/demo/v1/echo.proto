@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package demo.v1;
+
+option go_package = "github.com/dunkymole/proto-contract/examples/servers/go/gen;demov1";
+option java_multiple_files = true;
+option java_package = "io.github.dunkymole.protocontract.demo.v1";
+option csharp_namespace = "ProtoContract.Demo.V1";
+
+service EchoService {
+  rpc Echo(EchoRequest) returns (EchoResponse);
+}
+
+message EchoRequest {
+  string text = 1;
+  string request_id = 2;
+}
+
+message EchoResponse {
+  string text = 1;
+  string server_language = 2;
+}

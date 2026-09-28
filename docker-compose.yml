@@ -1,0 +1,26 @@
+services:
+  go-server:
+    build:
+      context: .
+      dockerfile: examples/servers/go/Dockerfile
+  cpp-server:
+    build:
+      context: .
+      dockerfile: examples/servers/cpp/Dockerfile
+  java-server:
+    build:
+      context: .
+      dockerfile: examples/servers/java/Dockerfile
+  dotnet-server:
+    build:
+      context: .
+      dockerfile: examples/servers/dotnet/Dockerfile
+  python-client:
+    build:
+      context: .
+      dockerfile: examples/python-client/Dockerfile
+    depends_on:
+      - go-server
+      - cpp-server
+      - java-server
+      - dotnet-server

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><TargetFramework>net9.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.72.0" PrivateAssets="All" />
+    <Protobuf Include="../../../proto/demo/v1/echo.proto" GrpcServices="Server" />
+    <Compile Include="../../../runtimes/dotnet/ContractServerInterceptor.cs" Link="ContractServerInterceptor.cs" />
+  </ItemGroup>
+</Project>

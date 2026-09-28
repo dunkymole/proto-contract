@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "api": "demo.echo",
+  "version": "1.1.0",
+  "digest": "sha256:a2f17cfaaa1e524c6a13cb51a66aebe637b1505b52f1fdb5de5f3365f103d82f",
+  "service": {
+    "name": "demo.v1.EchoService",
+    "methods": [
+      {
+        "name": "Echo",
+        "input": "demo.v1.EchoRequest",
+        "output": "demo.v1.EchoResponse",
+        "client_streaming": false,
+        "server_streaming": false
+      }
+    ]
+  },
+  "messages": [
+    {
+      "name": "demo.v1.EchoRequest",
+      "fields": [
+        {
+          "number": 1,
+          "name": "text",
+          "type": "TYPE_STRING",
+          "label": "LABEL_OPTIONAL"
+        },
+        {
+          "number": 2,
+          "name": "request_id",
+          "type": "TYPE_STRING",
+          "label": "LABEL_OPTIONAL"
+        }
+      ]
+    },
+    {
+      "name": "demo.v1.EchoResponse",
+      "fields": [
+        {
+          "number": 1,
+          "name": "text",
+          "type": "TYPE_STRING",
+          "label": "LABEL_OPTIONAL"
+        },
+        {
+          "number": 2,
+          "name": "server_language",
+          "type": "TYPE_STRING",
+          "label": "LABEL_OPTIONAL"
+        }
+      ]
+    }
+  ],
+  "enums": []
+}
