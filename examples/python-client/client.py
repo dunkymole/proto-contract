@@ -9,9 +9,9 @@ from demo.v1 import echo_pb2, echo_pb2_grpc
 
 SERVERS = {
     "Go": "go-server:50051",
-    "C++": "cpp-server:50052",
     "Java": "java-server:50053",
     ".NET": "dotnet-server:50054",
+    "Python": "python-server:50055",
 }
 
 def call(target, version):
@@ -33,7 +33,7 @@ def main():
                 raise AssertionError(f"{expected} accepted incompatible {rejected}")
             except grpc.RpcError as error:
                 assert error.code() == grpc.StatusCode.FAILED_PRECONDITION, error
-        print(f"PASS {expected}: accepted 1.0.0; rejected 1.2.0 and 2.0.0")
-    print("All contract checks passed")
+        print(f"PASS Python client -> {expected} server")
+    print("Python client matrix passed")
 
 if __name__ == "__main__": main()

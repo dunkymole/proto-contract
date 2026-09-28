@@ -14,6 +14,14 @@ import (
 
 const MetadataKey = "x-proto-contract"
 
+func UnaryClient(api, clientVersion string) grpc.UnaryClientInterceptor {
+	value := api + "@" + clientVersion
+	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		ctx = metadata.AppendToOutgoingContext(ctx, MetadataKey, value)
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
 func UnaryServer(api, serverVersion string) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		md, _ := metadata.FromIncomingContext(ctx)

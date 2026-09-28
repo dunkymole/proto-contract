@@ -1,6 +1,6 @@
 # Proto Contract
 
-Proto Contract gives protobuf APIs an explicit, enforceable compatibility version. It compiles a service and its reachable type graph into a deterministic lock file, calculates the minimum semantic version bump after a schema change, and supplies small gRPC runtime adapters that reject incompatible clients before application logic runs.
+Proto Contract gives protobuf APIs an explicit, enforceable compatibility version. It compiles a service and its reachable type graph into a deterministic lock file, calculates the minimum semantic version bump after a schema change, and supplies small gRPC runtime adapters for Python, Java, .NET, and Go.
 
 The rule is intentionally simple:
 
@@ -27,7 +27,7 @@ flowchart LR
 
 ## Try the complete demo
 
-You need Docker with Compose. The demonstration builds one Python client and servers in C++, Java, .NET, and Go, then exercises accepted and rejected versions against every server.
+You need Docker with Compose. The demonstration builds clients and servers in Python, Java, .NET, and Go. It exercises every client against every server: 16 language combinations, each with accepted and rejected contract versions.
 
 ```powershell
 ./scripts/test-all.ps1
@@ -36,11 +36,11 @@ You need Docker with Compose. The demonstration builds one Python client and ser
 Expected result:
 
 ```text
-PASS Go: accepted 1.0.0; rejected 1.2.0 and 2.0.0
-PASS C++: accepted 1.0.0; rejected 1.2.0 and 2.0.0
-PASS Java: accepted 1.0.0; rejected 1.2.0 and 2.0.0
-PASS .NET: accepted 1.0.0; rejected 1.2.0 and 2.0.0
-All contract checks passed
+PASS Python client -> Go server
+PASS Go client -> Java server
+PASS Java client -> .NET server
+PASS .NET client -> Go server
+All 16 client/server combinations passed
 ```
 
 ## Compiler workflow
@@ -75,7 +75,7 @@ The compiler applies the calculated minimum automatically. You may pass `--bump 
 
 ## Runtime adapters
 
-The Python client uses [`ContractClientInterceptor`](runtimes/python/proto_contract.py). Go, Java, and .NET use native server interceptors. gRPC C++ server interceptors cannot terminate an RPC safely at metadata receipt, so the C++ adapter is a small verifier called at the start of a handler. See [runtime integration](docs/RUNTIMES.md) for copyable examples.
+Python, Go, Java, and .NET have client interceptors that attach the contract to every call and native server interceptors that reject incompatible calls before application logic runs. See [runtime integration](docs/RUNTIMES.md) for copyable examples.
 
 ## What gets versioned
 

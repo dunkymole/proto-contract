@@ -11,11 +11,29 @@ channel = intercepted_channel("orders.example:443", "example.orders", "2.3.0")
 stub = OrdersStub(channel)
 ```
 
+## Python server
+
+```python
+server = grpc.server(
+    executor,
+    interceptors=(ContractServerInterceptor("example.orders", "2.5.0"),),
+)
+```
+
 ## Go server
 
 ```go
 server := grpc.NewServer(
     grpc.UnaryInterceptor(protocontract.UnaryServer("example.orders", "2.5.0")),
+)
+```
+
+## Go client
+
+```go
+connection, _ := grpc.NewClient(target,
+    grpc.WithTransportCredentials(credentials),
+    grpc.WithUnaryInterceptor(protocontract.UnaryClient("example.orders", "2.3.0")),
 )
 ```
 
@@ -27,6 +45,13 @@ builder.addService(ServerInterceptors.intercept(
     new ContractServerInterceptor("example.orders", "2.5.0")));
 ```
 
+## Java client
+
+```java
+OrdersGrpc.OrdersBlockingStub stub = OrdersGrpc.newBlockingStub(channel)
+    .withInterceptors(new ContractClientInterceptor("example.orders", "2.3.0"));
+```
+
 ## .NET server
 
 ```csharp
@@ -34,16 +59,9 @@ services.AddGrpc(options => options.Interceptors.Add<ContractServerInterceptor>(
 services.AddSingleton(new ContractServerInterceptor("example.orders", "2.5.0"));
 ```
 
-## C++ server
+## .NET client
 
-The public C++ interceptor API can observe metadata but cannot reliably end the call before the handler. Call the verifier as the handler's first operation:
-
-```cpp
-grpc::Status Echo(grpc::ServerContext* context, const Request* request, Response* response) override {
-  auto result = proto_contract::Verify(*context, "example.orders", "2.5.0");
-  if (!result.ok()) return result;
-  // application logic
-}
+```csharp
+var invoker = channel.Intercept(new ContractClientInterceptor("example.orders", "2.3.0"));
+var client = new Orders.OrdersClient(invoker);
 ```
-
-For a TLS server, an `AuthMetadataProcessor` can enforce the same check before dispatch; it is tied to server credentials and is therefore less composable for this library's general adapter.
