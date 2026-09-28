@@ -3,18 +3,11 @@ package contract
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // TypeScript generates a self-contained client interceptor from a contract lock.
 func TypeScript(s *Snapshot) ([]byte, error) {
-	if s == nil || s.Format != 1 {
-		return nil, fmt.Errorf("unsupported contract lock format")
-	}
-	if s.API == "" || strings.ContainsAny(s.API, "@\r\n") || s.Service.Name == "" {
-		return nil, fmt.Errorf("lock requires a valid API identifier and service name")
-	}
-	if _, err := NextVersion(s.Version, None); err != nil {
+	if err := validateGeneration(s); err != nil {
 		return nil, err
 	}
 	quote := func(value string) string { b, _ := json.Marshal(value); return string(b) }

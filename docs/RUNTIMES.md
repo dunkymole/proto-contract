@@ -2,6 +2,27 @@
 
 All adapters use the ASCII gRPC metadata key `x-proto-contract` with value `<api>@<semver>`.
 
+## Generate client contracts
+
+The client build's tracked lock is the source of its API identity and version. Run `check` against the proto and lock, then `generate` alongside protobuf binding generation. Regenerate after updating the client lock. The output embeds that version at build time; it does not query a server or negotiate a different version.
+
+```sh
+proto-contract generate --lock contracts/orders.json --lang python --out orders_contract.py
+proto-contract generate --lock contracts/orders.json --lang go --package orderscontract --out gen/orderscontract/contract.go
+proto-contract generate --lock contracts/orders.json --lang java --package contracts.orders --out src/main/java/contracts/orders/Contract.java
+proto-contract generate --lock contracts/orders.json --lang dotnet --package Contracts.Orders --out Generated/Orders/Contract.cs
+```
+
+| Language | Generated client entry point | Runtime dependency |
+| --- | --- | --- |
+| Python | `orders_contract.ClientInterceptor()` | `runtimes/python/proto_contract.py` on the import path |
+| Go | `orderscontract.ClientInterceptor()` | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` |
+| Java | `contracts.orders.Contract.clientInterceptor()` | Compile `runtimes/java/src/main/java` with the generated source |
+| .NET | `Contracts.Orders.Contract.ClientInterceptor()` | Include `runtimes/dotnet/ContractClientInterceptor.cs` |
+| TypeScript | `contractInterceptor` from its generated module | Connect 2.x; see below |
+
+`--package` sets the Go/Java package or C# namespace. Defaults are `contractgen`, `protocontract.generated`, and `ProtoContract.Generated`, respectively. Java emits a public class named `Contract`, so use `Contract.java`. Generate a distinct module/package/namespace per service. Generated metadata constants are available for inspection, but client setup uses the no-argument entry point. The outputs retain each runtime adapter's existing RPC support; generation does not add streaming support to unary-only runtimes.
+
 ## TypeScript / grpc-bridge client
 
 Proto Contract supports [grpc-bridge](https://github.com/dunkymole/grpc-bridge) and its standard Connect transport/interceptor APIs. Generate each client's interceptor from its tracked contract lock. Use Connect 2.x, grpc-bridge with the public API introduced in [PR #12](https://github.com/dunkymole/grpc-bridge/pull/12), Protobuf-ES 2.x generated service descriptors, and a supported browser or Node.js 24+.
@@ -11,7 +32,7 @@ proto-contract generate --lock contracts/orders.json --lang typescript --out src
 proto-contract generate --lock contracts/inventory.json --lang typescript --out src/gen/inventory_contract.ts
 ```
 
-Each output is a self-contained TypeScript module exporting `contract` (API, version, service) and `contractInterceptor`. It imports only Connect; no copied runtime adapter is needed. Generate it alongside protobuf bindings, rerun when the client lock changes, and use `proto-contract check` to verify that the lock matches the proto. `generate` reads the lock without changing or incrementing its version. Generation currently supports TypeScript.
+Each output is a self-contained TypeScript module exporting `contract` (API, version, service) and `contractInterceptor`. It imports only Connect; no copied runtime adapter is needed. Generate it alongside protobuf bindings, rerun when the client lock changes, and use `proto-contract check` to verify that the lock matches the proto. `generate` reads the lock without changing or incrementing its version.
 
 ```typescript
 import { createClient } from "@connectrpc/connect";
@@ -58,9 +79,13 @@ The [Docker example](../examples/clients/grpc-bridge/README.md) builds the unpub
 ## Python client
 
 ```python
-from proto_contract import intercepted_channel
+from orders_contract import ClientInterceptor
+import grpc
 
-channel = intercepted_channel("orders.example:443", "example.orders", "2.3.0")
+channel = grpc.intercept_channel(
+    grpc.secure_channel("orders.example:443", grpc.ssl_channel_credentials()),
+    ClientInterceptor(),
+)
 stub = OrdersStub(channel)
 ```
 
@@ -86,7 +111,7 @@ server := grpc.NewServer(
 ```go
 connection, _ := grpc.NewClient(target,
     grpc.WithTransportCredentials(credentials),
-    grpc.WithUnaryInterceptor(protocontract.UnaryClient("example.orders", "2.3.0")),
+    grpc.WithUnaryInterceptor(orderscontract.ClientInterceptor()),
 )
 ```
 
@@ -102,7 +127,7 @@ builder.addService(ServerInterceptors.intercept(
 
 ```java
 OrdersGrpc.OrdersBlockingStub stub = OrdersGrpc.newBlockingStub(channel)
-    .withInterceptors(new ContractClientInterceptor("example.orders", "2.3.0"));
+    .withInterceptors(contracts.orders.Contract.clientInterceptor());
 ```
 
 ## .NET server
@@ -115,6 +140,6 @@ services.AddSingleton(new ContractServerInterceptor("example.orders", "2.5.0"));
 ## .NET client
 
 ```csharp
-var invoker = channel.Intercept(new ContractClientInterceptor("example.orders", "2.3.0"));
+var invoker = channel.Intercept(Contracts.Orders.Contract.ClientInterceptor());
 var client = new Orders.OrdersClient(invoker);
 ```

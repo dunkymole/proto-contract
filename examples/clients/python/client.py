@@ -3,7 +3,8 @@ import sys
 import grpc
 
 sys.path.insert(0, "/app/runtime")
-from proto_contract import intercepted_channel
+from proto_contract import ContractClientInterceptor
+from echo_contract import ClientInterceptor
 from demo.v1 import echo_pb2, echo_pb2_grpc
 
 SERVERS = {
@@ -14,8 +15,8 @@ SERVERS = {
 }
 
 
-def call(target, version):
-    channel = intercepted_channel(target, "demo.echo", version)
+def call(target, interceptor):
+    channel = grpc.intercept_channel(grpc.insecure_channel(target), interceptor)
     stub = echo_pb2_grpc.EchoServiceStub(channel)
     return stub.Echo(echo_pb2.EchoRequest(text="hello", request_id="demo"), timeout=4)
 
@@ -27,11 +28,11 @@ def wait_for(target):
 def main():
     for expected, target in SERVERS.items():
         wait_for(target)
-        response = call(target, "1.0.0")
+        response = call(target, ClientInterceptor())
         assert response.text == "hello" and response.server_language == expected, response
         for rejected in ("1.2.0", "2.0.0"):
             try:
-                call(target, rejected)
+                call(target, ContractClientInterceptor("demo.echo", rejected))
                 raise AssertionError(f"{expected} accepted incompatible {rejected}")
             except grpc.RpcError as error:
                 assert error.code() == grpc.StatusCode.FAILED_PRECONDITION, error
