@@ -7,5 +7,6 @@
     <PackageReference Include="Grpc.Tools" Version="2.72.0" PrivateAssets="All" />
     <Protobuf Include="../../../proto/demo/v1/echo.proto" GrpcServices="Client" />
     <Compile Include="../../../runtimes/dotnet/ContractClientInterceptor.cs" Link="ContractClientInterceptor.cs" />
+    <Compile Include="../../../runtimes/dotnet/ContractServerInterceptor.cs" Link="ContractServerInterceptor.cs" />
   </ItemGroup>
 </Project>

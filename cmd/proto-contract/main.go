@@ -41,7 +41,7 @@ func usage() {
 
 func generate(args []string) error {
 	fs := flag.NewFlagSet("generate", flag.ContinueOnError)
-	lock := fs.String("lock", "", "contract lock used to build this client")
+	lock := fs.String("lock", "", "contract lock used to build this client or server")
 	language := fs.String("lang", "typescript", "output language: typescript, python, go, java, dotnet")
 	packageName := fs.String("package", "", "generated Go/Java package or .NET namespace")
 	out := fs.String("out", "", "generated module path")

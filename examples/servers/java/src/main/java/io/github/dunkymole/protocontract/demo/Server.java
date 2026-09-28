@@ -3,7 +3,7 @@ package io.github.dunkymole.protocontract.demo;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.stub.StreamObserver;
-import io.github.dunkymole.protocontract.ContractServerInterceptor;
+import protocontract.generated.echo.Contract;
 import io.github.dunkymole.protocontract.demo.v1.*;
 
 public final class Server {
@@ -15,7 +15,7 @@ public final class Server {
   }
   public static void main(String[] args) throws Exception {
     io.grpc.Server server = ServerBuilder.forPort(50053)
-        .addService(ServerInterceptors.intercept(new EchoImpl(), new ContractServerInterceptor("demo.echo", "1.1.0")))
+        .addService(ServerInterceptors.intercept(new EchoImpl(), Contract.serverInterceptor()))
         .build().start();
     System.out.println("Java server listening on :50053");
     server.awaitTermination();

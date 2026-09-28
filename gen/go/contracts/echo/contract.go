@@ -2,8 +2,10 @@
 package echocontract
 
 import (
+	"context"
 	"github.com/dunkymole/proto-contract/runtimes/go/protocontract"
 	"google.golang.org/grpc"
+	"strings"
 )
 
 const API = "demo.echo"
@@ -13,4 +15,15 @@ const Service = "demo.v1.EchoService"
 // ClientInterceptor returns an interceptor bound to this package's generated contract.
 func ClientInterceptor() grpc.UnaryClientInterceptor {
 	return protocontract.UnaryClient(API, Version)
+}
+
+// ServerInterceptor enforces this service's contract and leaves other services to their own interceptor.
+func ServerInterceptor() grpc.UnaryServerInterceptor {
+	enforce := protocontract.UnaryServer(API, Version)
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		if !strings.HasPrefix(info.FullMethod, "/"+Service+"/") {
+			return handler(ctx, req)
+		}
+		return enforce(ctx, req, info, handler)
+	}
 }

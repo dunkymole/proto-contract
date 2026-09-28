@@ -5,8 +5,8 @@ import (
 	"log"
 	"net"
 
+	echocontract "github.com/dunkymole/proto-contract/gen/go/contracts/echo"
 	pb "github.com/dunkymole/proto-contract/gen/go/demo/v1"
-	contract "github.com/dunkymole/proto-contract/runtimes/go/protocontract"
 	"google.golang.org/grpc"
 )
 
@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s := grpc.NewServer(grpc.UnaryInterceptor(contract.UnaryServer("demo.echo", "1.1.0")))
+	s := grpc.NewServer(grpc.UnaryInterceptor(echocontract.ServerInterceptor()))
 	pb.RegisterEchoServiceServer(s, server{})
 	log.Println("Go server listening on :50051")
 	log.Fatal(s.Serve(lis))

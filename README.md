@@ -80,7 +80,9 @@ The compiler applies the calculated minimum automatically. You may pass `--bump 
 
 Python, Go, Java, and .NET have client interceptors that attach the contract to every call and native server interceptors that reject incompatible calls before application logic runs.
 
-**Generate every client's contract from its lock file.** Run `proto-contract check` against the client's proto, then `generate` alongside protobuf generation. Each generated module exposes a no-argument interceptor bound to that lock's API and version. Regenerate when the client lock changes; do not substitute the deployed server's current version. Python, Go, Java, and .NET outputs use this repository's corresponding [runtime adapter](runtimes/); TypeScript output imports Connect directly. Keep each generated contract in its own module or package when a client uses multiple services.
+**Generate both client and server contracts from their build's lock files.** Run `proto-contract check` against the proto, then `generate` alongside protobuf generation. Python, Go, Java, and .NET modules expose both client and server interceptors with no API or version arguments. Regenerate when that build's lock changes. Client and server builds may use different lock versions; neither should obtain its version from the other at runtime. Outputs use this repository's corresponding [runtime adapters](runtimes/); the TypeScript grpc-bridge client imports Connect directly. Keep each service's generated contract in its own module or package and register its matching interceptor.
+
+The client and server snippets below represent separate applications, each using code generated from its own lock. All Docker example builds check the lock and generate their adapters before compilation.
 
 ### TypeScript / grpc-bridge
 
@@ -133,8 +135,7 @@ Make `runtimes/python/proto_contract.py` importable alongside the generated modu
 ```python
 from concurrent import futures
 import grpc
-from proto_contract import ContractServerInterceptor
-from echo_contract import ClientInterceptor
+from echo_contract import ClientInterceptor, ServerInterceptor
 
 # Client: use this channel when constructing generated stubs.
 channel = grpc.intercept_channel(grpc.insecure_channel("localhost:50051"), ClientInterceptor())
@@ -142,7 +143,7 @@ channel = grpc.intercept_channel(grpc.insecure_channel("localhost:50051"), Clien
 # Server: the interceptor runs before the generated service handler.
 server = grpc.server(
     futures.ThreadPoolExecutor(),
-    interceptors=(ContractServerInterceptor("demo.echo", "1.1.0"),),
+    interceptors=(ServerInterceptor(),),
 )
 ```
 
@@ -157,7 +158,6 @@ proto-contract generate --lock contracts/demo.echo.json --lang go --package echo
 import (
     "log"
 
-    contract "github.com/dunkymole/proto-contract/runtimes/go/protocontract"
     echocontract "github.com/dunkymole/proto-contract/gen/go/contracts/echo"
     "google.golang.org/grpc"
     "google.golang.org/grpc/credentials/insecure"
@@ -175,7 +175,7 @@ if err != nil {
 
 // Server: register generated services on server.
 server := grpc.NewServer(
-    grpc.UnaryInterceptor(contract.UnaryServer("demo.echo", "1.1.0")),
+    grpc.UnaryInterceptor(echocontract.ServerInterceptor()),
 )
 ```
 
@@ -194,7 +194,6 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import protocontract.generated.echo.Contract;
-import io.github.dunkymole.protocontract.ContractServerInterceptor;
 
 // Client: construct the generated stub from this channel.
 ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
@@ -206,7 +205,7 @@ ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
 io.grpc.Server server = ServerBuilder.forPort(50051)
     .addService(ServerInterceptors.intercept(
         new EchoServiceImpl(),
-        new ContractServerInterceptor("demo.echo", "1.1.0")))
+        Contract.serverInterceptor()))
     .build();
 ```
 
@@ -217,23 +216,20 @@ proto-contract generate --lock contracts/demo.echo.json --lang dotnet \
   --package ProtoContract.Generated.Echo --out Generated/Contract.cs
 ```
 
-Include the generated source and `runtimes/dotnet/ContractClientInterceptor.cs` in your project:
+Include the generated source and both interceptor sources from `runtimes/dotnet` in your project:
 
 ```csharp
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
-using ProtoContract;
 using EchoContract = ProtoContract.Generated.Echo.Contract;
 
 // Client: construct the generated client from this invoker.
 using var channel = GrpcChannel.ForAddress("https://api.example.com");
 var invoker = channel.Intercept(EchoContract.ClientInterceptor());
 
-// ASP.NET Core server registration.
-builder.Services.AddSingleton(
-    new ContractServerInterceptor("demo.echo", "1.1.0"));
-builder.Services.AddGrpc(options =>
-    options.Interceptors.Add<ContractServerInterceptor>());
+// ASP.NET Core server: EchoServiceImpl is the service implementation.
+builder.Services.AddGrpc().AddServiceOptions<EchoServiceImpl>(options =>
+    options.Interceptors.Add<EchoContract.ServerInterceptor>());
 ```
 
 The demo source contains complete runnable services and clients. See [runtime integration](docs/RUNTIMES.md) for behavior and dependency details.
@@ -259,7 +255,7 @@ Proto Contract is independent of application release versions and authentication
 
 ## Project status
 
-This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The immediate roadmap is richer protobuf compatibility classification, all four streaming shapes, generated server integration, published language packages, and CI integrations.
+This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The immediate roadmap is richer protobuf compatibility classification, all four streaming shapes, published language packages, and CI integrations.
 
 ## Contributing and security
 

@@ -3,7 +3,7 @@ using Grpc.Core.Interceptors;
 
 namespace ProtoContract;
 
-public sealed class ContractServerInterceptor(string api, string serverVersion) : Interceptor
+public class ContractServerInterceptor(string api, string serverVersion) : Interceptor
 {
     public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
     {

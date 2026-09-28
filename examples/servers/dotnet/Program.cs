@@ -1,11 +1,11 @@
-using ProtoContract;
+using EchoContract = ProtoContract.Generated.Echo.Contract;
 using ProtoContract.Demo.V1;
 using Grpc.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(50054, listen => listen.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2));
-builder.Services.AddGrpc(options => options.Interceptors.Add<ContractServerInterceptor>());
-builder.Services.AddSingleton(new ContractServerInterceptor("demo.echo", "1.1.0"));
+builder.Services.AddGrpc().AddServiceOptions<EchoServiceImpl>(options =>
+    options.Interceptors.Add<EchoContract.ServerInterceptor>());
 var app = builder.Build();
 app.MapGrpcService<EchoServiceImpl>();
 app.Run();
