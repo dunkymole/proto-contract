@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/dunkymole/proto-contract/internal/contract"
 )
@@ -22,6 +23,8 @@ func main() {
 		err = update(os.Args[2:])
 	case "version":
 		err = version(os.Args[2:])
+	case "generate":
+		err = generate(os.Args[2:])
 	default:
 		usage()
 	}
@@ -32,8 +35,47 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: proto-contract <snapshot|check|update|version> [options]")
+	fmt.Fprintln(os.Stderr, "usage: proto-contract <snapshot|check|update|version|generate> [options]")
 	os.Exit(2)
+}
+
+func generate(args []string) error {
+	fs := flag.NewFlagSet("generate", flag.ContinueOnError)
+	lock := fs.String("lock", "", "contract lock used to build this client")
+	language := fs.String("lang", "typescript", "output language (typescript)")
+	out := fs.String("out", "", "generated module path")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *lock == "" || *out == "" {
+		return fmt.Errorf("--lock and --out are required")
+	}
+	if *language != "typescript" {
+		return fmt.Errorf("unsupported language %q", *language)
+	}
+	lockPath, err := filepath.Abs(*lock)
+	if err != nil {
+		return err
+	}
+	outPath, err := filepath.Abs(*out)
+	if err != nil {
+		return err
+	}
+	if lockPath == outPath {
+		return fmt.Errorf("output must not overwrite the contract lock")
+	}
+	s, err := contract.Read(*lock)
+	if err != nil {
+		return err
+	}
+	source, err := contract.TypeScript(s)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(*out), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(*out, source, 0644)
 }
 
 func update(args []string) error {

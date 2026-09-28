@@ -3,6 +3,7 @@ import { Code, ConnectError, createClient, createContextValues } from "@connectr
 import { createBridgeConnection, interceptTransport, waitForReady } from "@dunkymole/grpc-bridge";
 import { EchoService } from "./gen/demo/v1/echo_pb.js";
 import { contractClientInterceptor } from "./runtime/proto-contract.js";
+import { contractInterceptor } from "./gen/echo_contract.js";
 
 const servers = {
   Go: "go-server:50051",
@@ -27,6 +28,15 @@ for (const [expected, target] of Object.entries(servers)) {
   const rejected = (stub: ReturnType<typeof client>) => assert.rejects(call(stub),
     (error: unknown) => error instanceof ConnectError && error.code === Code.FailedPrecondition);
   try {
+    // Normal application path: contract identity and version come from the lock.
+    const generatedClient = createClient(EchoService, interceptTransport(connection.transport, {
+      baseUrl: `http://${target}`,
+      interceptors: [contractInterceptor],
+    }));
+    const generatedResponse = await call(generatedClient);
+    assert.equal(generatedResponse.text, "hello");
+    assert.equal(generatedResponse.serverLanguage, expected);
+    // Explicit versions below are compatibility test fixtures, not application configuration.
     for (const version of ["1.0.0", "1.1.0", "1.1.99"]) {
       const response = await call(client("demo.echo", version));
       assert.equal(response.text, "hello");

@@ -1,10 +1,33 @@
 import { interceptTransport } from "@dunkymole/grpc-bridge";
+import { readFileSync } from "node:fs";
+import { contract, contractInterceptor } from "./gen/echo_contract.js";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, createContextValues, type Transport, type UnaryRequest, type StreamRequest } from "@connectrpc/connect";
 import { EchoService, EchoRequestSchema } from "./gen/demo/v1/echo_pb.js";
 import { contractClientInterceptor, metadataKey } from "./runtime/proto-contract.js";
+
+test("generated interceptor uses the lock and rejects another service", async () => {
+  const lock = JSON.parse(readFileSync("/contracts/demo.echo.json", "utf8"));
+  assert.deepEqual(contract, { api: lock.api, version: lock.version, service: lock.service.name });
+  let calls = 0;
+  const invoke = contractInterceptor(async (request) => {
+    calls++;
+    assert.equal(request.header.get(metadataKey), `${lock.api}@${lock.version}`);
+    return { ...request, trailer: new Headers() };
+  });
+  const request: UnaryRequest = {
+    stream: false, method: EchoService.method.echo, service: EchoService,
+    url: "http://backend/demo.v1.EchoService/Echo", requestMethod: "POST",
+    header: new Headers(), signal: new AbortController().signal,
+    contextValues: createContextValues(), message: create(EchoRequestSchema),
+  };
+  await invoke(request);
+  await assert.rejects(invoke({ ...request, service: { ...EchoService, typeName: "other.Service" } }),
+    (error: unknown) => error instanceof ConnectError && error.code === Code.FailedPrecondition);
+  assert.equal(calls, 1);
+});
 
 for (const stream of [false, true]) {
   test(`contract metadata preserves ${stream ? "streaming" : "unary"} call state`, async () => {

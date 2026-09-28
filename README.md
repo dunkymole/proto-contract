@@ -82,12 +82,19 @@ Python, Go, Java, and .NET have client interceptors that attach the contract to 
 
 ### TypeScript / grpc-bridge
 
-Copy [the TypeScript adapter](runtimes/typescript/proto-contract.ts) into your client project and wrap the bridge transport separately for each generated service client:
+Generate a service-specific interceptor from the contract lock used to build your client. The API name, service name, and version are generated; application code does not repeat them:
+
+```sh
+proto-contract generate --lock contracts/demo.echo.json --lang typescript \
+  --out src/gen/echo_contract.ts
+```
+
+Run this after the normal protobuf generation step (using the compiler binary or Docker image built above). Register the generated interceptor separately for each service client:
 
 ```typescript
 import { createClient } from "@connectrpc/connect";
 import { openBridgeConnection, interceptTransport } from "@dunkymole/grpc-bridge";
-import { contractClientInterceptor } from "./proto-contract.js";
+import { contractInterceptor } from "./gen/echo_contract.js";
 import { EchoService } from "./gen/demo/v1/echo_pb.js";
 
 const connection = await openBridgeConnection({
@@ -99,7 +106,7 @@ try {
     EchoService,
     interceptTransport(connection.transport, {
       baseUrl: "http://echo-service:50051",
-      interceptors: [contractClientInterceptor("demo.echo", "1.0.0")],
+      interceptors: [contractInterceptor],
     }),
   );
   const reply = await client.echo({ text: "hello" }, { timeoutMs: 5000 });
@@ -110,6 +117,8 @@ try {
 ```
 
 This also works with `createBridgeConnection` and transports acquired from `createSharedBridgeConnection`. Each wrapper belongs to its service client; it leaves the shared transport unchanged. The bridge forwards the contract metadata to the native gRPC server, which enforces compatibility. See the [runnable grpc-bridge example](examples/clients/grpc-bridge/README.md) and [runtime details](docs/RUNTIMES.md#typescript--grpc-bridge-client).
+
+Regenerate when the client's contract lock changes. The generated module embeds that build's contract version; it must not read a deployed server's current version at runtime. Explicit versions in the interoperability tests are test fixtures for compatible and incompatible clients.
 
 ### Python
 
@@ -221,7 +230,7 @@ Proto Contract is independent of application release versions and authentication
 
 ## Project status
 
-This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The immediate roadmap is richer protobuf compatibility classification, all four streaming shapes, generated adapters, published language packages, and CI integrations.
+This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The immediate roadmap is richer protobuf compatibility classification, all four streaming shapes, generated adapters for the remaining languages, published language packages, and CI integrations.
 
 ## Contributing and security
 
