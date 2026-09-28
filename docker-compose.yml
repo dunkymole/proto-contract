@@ -1,4 +1,14 @@
 services:
+  grpc-bridge:
+    build:
+      context: .
+      dockerfile: examples/clients/grpc-bridge/Dockerfile
+      target: bridge
+  grpc-bridge-client:
+    build:
+      context: .
+      dockerfile: examples/clients/grpc-bridge/Dockerfile
+      target: client
   dotnet-server:
     build:
       context: .

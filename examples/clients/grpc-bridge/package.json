@@ -1,0 +1,21 @@
+{
+  "name": "proto-contract-grpc-bridge-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test interceptor.test.ts",
+    "start": "tsx client.ts"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.15.0",
+    "@connectrpc/connect": "2.2.0",
+    "@dunkymole/grpc-bridge": "file:./grpc-bridge.tgz"
+  },
+  "devDependencies": {
+    "@bufbuild/protoc-gen-es": "2.15.0",
+    "@types/node": "24.10.1",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
+  }
+}

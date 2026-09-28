@@ -2,6 +2,41 @@
 
 All adapters use the ASCII gRPC metadata key `x-proto-contract` with value `<api>@<semver>`.
 
+## TypeScript / grpc-bridge client
+
+Proto Contract supports [grpc-bridge](https://github.com/dunkymole/grpc-bridge) and its standard Connect transport/interceptor APIs. Copy `runtimes/typescript/proto-contract.ts` into your application; it uses types from `@connectrpc/connect` 2.x. Use grpc-bridge with the interceptor API introduced in [PR #10](https://github.com/dunkymole/grpc-bridge/pull/10), Protobuf-ES 2.x generated service descriptors, and a supported browser or Node.js 24+.
+
+```typescript
+import { createClient } from "@connectrpc/connect";
+import { contractClientTransport } from "./proto-contract.js";
+import { createSharedBridgeConnection } from "@dunkymole/grpc-bridge";
+import { OrdersService, InventoryService } from "./gen/services_pb.js";
+
+const shared = createSharedBridgeConnection({
+  url: "wss://bridge.example.com/tunnel",
+  target: "orders.example:443",
+});
+const lease = await shared.acquire();
+try {
+  const orders = createClient(OrdersService,
+    contractClientTransport(lease.transport, "example.orders", "2.3.0"));
+  const inventory = createClient(InventoryService,
+    contractClientTransport(lease.transport, "example.inventory", "1.0.0"));
+  // Use both clients while holding the lease. Their contracts remain independent.
+} finally {
+  await lease.release();
+  await shared.dispose(); // When the owner shuts down.
+}
+```
+
+Use the same per-client wrapper with `openBridgeConnection` or `createBridgeConnection`. Contract configuration belongs to the generated service client, not a shared channel: create a separate wrapper for each API/version. Wrappers copy call headers and do not mutate the underlying transport or caller-owned headers. Close connections, release shared leases, and dispose shared handles when their owner shuts down.
+
+The adapter sets one contract value, replacing any existing value for that key while preserving other headers. It applies to unary and streaming requests without consuming or wrapping message streams. grpc-bridge preserves this request metadata through retries and connection replacement. Contract enforcement remains on the native gRPC server; the bridge forwards bytes without interpreting the contract. The current demo and server adapters validate unary RPCs only.
+
+`contractClientInterceptor(api, version)` is also exported as a standard Connect `Interceptor` for a transport dedicated to a single service contract. Do not register a fixed contract interceptor on a bridge connection shared by different service clients; use `contractClientTransport` for each client instead. Connection-level interceptors remain available for shared concerns such as tracing or authentication.
+
+The [Docker example](../examples/clients/grpc-bridge/README.md) builds the unpublished bridge package from pinned source and tests TypeScript through the bridge against Go, Java, .NET, and Python servers.
+
 ## Python client
 
 ```python

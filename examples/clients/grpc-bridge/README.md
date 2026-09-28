@@ -1,0 +1,24 @@
+# TypeScript client through grpc-bridge
+
+This example binds Proto Contract metadata to each generated Connect service client over a shared grpc-bridge connection. Each RPC travels from Node.js 24 over a WebSocket tunnel, through the Go bridge, to a native gRPC server.
+
+From the repository root, run the complete 20-combination matrix:
+
+```powershell
+./scripts/test-all.ps1
+```
+
+Or run only the four grpc-bridge combinations:
+
+```sh
+docker compose build grpc-bridge grpc-bridge-client go-server java-server dotnet-server python-server
+docker compose up -d grpc-bridge go-server java-server dotnet-server python-server
+docker compose run --rm -T grpc-bridge-client
+docker compose down
+```
+
+The client verifies the response and server identity for older-minor, equal, and different-patch compatible versions. It requires `FAILED_PRECONDITION` for newer-minor, different-major, wrong-API, and missing contracts. Concurrent clients with independent API/version settings share one connection per backend, and a compatible client still succeeds after rejected calls. Calls use a 90-second deadline and wait for servers to become ready; each connection is closed after its backend checks finish.
+
+`Dockerfile` builds both the bridge executable and its unpublished TypeScript package from commit `3bf0f1e0fbd49ea9056e2e491420914c3a7b7b1d` (the interceptor implementation in grpc-bridge PR #10). The package lock pins the resulting tarball and npm dependencies; updating `GRPC_BRIDGE_REF` also requires regenerating the lock against the new tarball. Protobuf-ES bindings are generated from this repository's demo proto at build time. Type-checking and focused interceptor tests run before the image is produced.
+
+`targets.json` explicitly allows the four demo backends. The bridge is available only on the Compose network. In an application, use your own bridge URL, target allowlist, TLS and authentication settings; the reusable adapter is `runtimes/typescript/proto-contract.ts`.

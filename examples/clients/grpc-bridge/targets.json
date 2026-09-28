@@ -1,0 +1,8 @@
+{
+  "targets": {
+    "go-server:50051": { "tls": false },
+    "java-server:50053": { "tls": false },
+    "dotnet-server:50054": { "tls": false },
+    "python-server:50055": { "tls": false }
+  }
+}
