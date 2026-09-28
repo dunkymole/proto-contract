@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { Code, ConnectError, createClient, createContextValues } from "@connectrpc/connect";
-import { createBridgeConnection, waitForReady } from "@dunkymole/grpc-bridge";
+import { createBridgeConnection, interceptTransport, waitForReady } from "@dunkymole/grpc-bridge";
 import { EchoService } from "./gen/demo/v1/echo_pb.js";
-import { contractClientTransport } from "./runtime/proto-contract.js";
+import { contractClientInterceptor } from "./runtime/proto-contract.js";
 
 const servers = {
   Go: "go-server:50051",
@@ -18,7 +18,7 @@ for (const [expected, target] of Object.entries(servers)) {
     scheme: "http",
   });
   const client = (api: string, version: string) => createClient(
-    EchoService, contractClientTransport(connection.transport, api, version),
+    EchoService, interceptTransport(connection.transport, { baseUrl: `http://${target}`, interceptors: [contractClientInterceptor(api, version)] }),
   );
   const call = (stub: ReturnType<typeof client>) => stub.echo(
     { text: "hello", requestId: "grpc-bridge-demo" },

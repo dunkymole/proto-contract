@@ -4,12 +4,12 @@ All adapters use the ASCII gRPC metadata key `x-proto-contract` with value `<api
 
 ## TypeScript / grpc-bridge client
 
-Proto Contract supports [grpc-bridge](https://github.com/dunkymole/grpc-bridge) and its standard Connect transport/interceptor APIs. Copy `runtimes/typescript/proto-contract.ts` into your application; it uses types from `@connectrpc/connect` 2.x. Use grpc-bridge with the interceptor API introduced in [PR #10](https://github.com/dunkymole/grpc-bridge/pull/10), Protobuf-ES 2.x generated service descriptors, and a supported browser or Node.js 24+.
+Proto Contract supports [grpc-bridge](https://github.com/dunkymole/grpc-bridge) and its standard Connect transport/interceptor APIs. Copy `runtimes/typescript/proto-contract.ts` into your application; it uses types from `@connectrpc/connect` 2.x. Use grpc-bridge with the interceptor API introduced in [PR #12](https://github.com/dunkymole/grpc-bridge/pull/12), Protobuf-ES 2.x generated service descriptors, and a supported browser or Node.js 24+.
 
 ```typescript
 import { createClient } from "@connectrpc/connect";
-import { contractClientTransport } from "./proto-contract.js";
-import { createSharedBridgeConnection } from "@dunkymole/grpc-bridge";
+import { contractClientInterceptor } from "./proto-contract.js";
+import { createSharedBridgeConnection, interceptTransport } from "@dunkymole/grpc-bridge";
 import { OrdersService, InventoryService } from "./gen/services_pb.js";
 
 const shared = createSharedBridgeConnection({
@@ -19,9 +19,15 @@ const shared = createSharedBridgeConnection({
 const lease = await shared.acquire();
 try {
   const orders = createClient(OrdersService,
-    contractClientTransport(lease.transport, "example.orders", "2.3.0"));
+    interceptTransport(lease.transport, {
+      baseUrl: "https://orders.example",
+      interceptors: [contractClientInterceptor("example.orders", "2.3.0")],
+    }));
   const inventory = createClient(InventoryService,
-    contractClientTransport(lease.transport, "example.inventory", "1.0.0"));
+    interceptTransport(lease.transport, {
+      baseUrl: "https://orders.example",
+      interceptors: [contractClientInterceptor("example.inventory", "1.0.0")],
+    }));
   // Use both clients while holding the lease. Their contracts remain independent.
 } finally {
   await lease.release();
@@ -33,7 +39,9 @@ Use the same per-client wrapper with `openBridgeConnection` or `createBridgeConn
 
 The adapter sets one contract value, replacing any existing value for that key while preserving other headers. It applies to unary and streaming requests without consuming or wrapping message streams. grpc-bridge preserves this request metadata through retries and connection replacement. Contract enforcement remains on the native gRPC server; the bridge forwards bytes without interpreting the contract. The current demo and server adapters validate unary RPCs only.
 
-`contractClientInterceptor(api, version)` is also exported as a standard Connect `Interceptor` for a transport dedicated to a single service contract. Do not register a fixed contract interceptor on a bridge connection shared by different service clients; use `contractClientTransport` for each client instead. Connection-level interceptors remain available for shared concerns such as tracing or authentication.
+`contractClientInterceptor(api, version)` is a standard Connect `Interceptor`. Apply it per client using grpc-bridge's public `interceptTransport()`; do not register a fixed contract on the shared connection. No custom transport implementation or private bridge imports are needed. `baseUrl` identifies the logical backend to interceptors and does not change routing or open another connection.
+
+Client interceptors run before connection interceptors, once per logical RPC outside retries; responses unwind in reverse order. Connection-level interceptors remain available for tracing or authentication. The last `header.set()` wins, so a connection interceptor must not overwrite the client's contract. Shared defaults should only set a header when it is absent. Wrappers own no connection or lease; retain the underlying connection or lease for the clients' lifetime.
 
 The [Docker example](../examples/clients/grpc-bridge/README.md) builds the unpublished bridge package from pinned source and tests TypeScript through the bridge against Go, Java, .NET, and Python servers.
 

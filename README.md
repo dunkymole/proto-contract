@@ -86,8 +86,8 @@ Copy [the TypeScript adapter](runtimes/typescript/proto-contract.ts) into your c
 
 ```typescript
 import { createClient } from "@connectrpc/connect";
-import { openBridgeConnection } from "@dunkymole/grpc-bridge";
-import { contractClientTransport } from "./proto-contract.js";
+import { openBridgeConnection, interceptTransport } from "@dunkymole/grpc-bridge";
+import { contractClientInterceptor } from "./proto-contract.js";
 import { EchoService } from "./gen/demo/v1/echo_pb.js";
 
 const connection = await openBridgeConnection({
@@ -97,7 +97,10 @@ const connection = await openBridgeConnection({
 try {
   const client = createClient(
     EchoService,
-    contractClientTransport(connection.transport, "demo.echo", "1.0.0"),
+    interceptTransport(connection.transport, {
+      baseUrl: "http://echo-service:50051",
+      interceptors: [contractClientInterceptor("demo.echo", "1.0.0")],
+    }),
   );
   const reply = await client.echo({ text: "hello" }, { timeoutMs: 5000 });
   console.log(reply.text);

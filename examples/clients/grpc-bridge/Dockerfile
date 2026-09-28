@@ -1,7 +1,7 @@
-# Pin the interceptor implementation from grpc-bridge PR #10 for reproducibility.
+# Pin the interceptor implementation from grpc-bridge PR #12 for reproducibility.
 FROM alpine:3.22 AS source
 RUN apk add --no-cache git
-ARG GRPC_BRIDGE_REF=3bf0f1e0fbd49ea9056e2e491420914c3a7b7b1d
+ARG GRPC_BRIDGE_REF=9872bb4b46abb510f1a1fa3416275148a533357b
 RUN git init /bridge && cd /bridge && \
     git remote add origin https://github.com/dunkymole/grpc-bridge.git && \
     git fetch --depth 1 origin "$GRPC_BRIDGE_REF" && git checkout --detach FETCH_HEAD
