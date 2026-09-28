@@ -1,4 +1,8 @@
 services:
+  dotnet-server:
+    build:
+      context: .
+      dockerfile: examples/servers/dotnet/Dockerfile
   go-server:
     build:
       context: .
@@ -7,18 +11,14 @@ services:
     build:
       context: .
       dockerfile: examples/servers/java/Dockerfile
-  dotnet-server:
-    build:
-      context: .
-      dockerfile: examples/servers/dotnet/Dockerfile
   python-server:
     build:
       context: .
       dockerfile: examples/servers/python/Dockerfile
-  python-client:
+  dotnet-client:
     build:
       context: .
-      dockerfile: examples/python-client/Dockerfile
+      dockerfile: examples/clients/dotnet/Dockerfile
   go-client:
     build:
       context: .
@@ -27,7 +27,7 @@ services:
     build:
       context: .
       dockerfile: examples/clients/java/Dockerfile
-  dotnet-client:
+  python-client:
     build:
       context: .
-      dockerfile: examples/clients/dotnet/Dockerfile
+      dockerfile: examples/clients/python/Dockerfile

@@ -1,6 +1,5 @@
-import os
 import sys
-import time
+
 import grpc
 
 sys.path.insert(0, "/app/runtime")
@@ -14,13 +13,16 @@ SERVERS = {
     "Python": "python-server:50055",
 }
 
+
 def call(target, version):
     channel = intercepted_channel(target, "demo.echo", version)
     stub = echo_pb2_grpc.EchoServiceStub(channel)
     return stub.Echo(echo_pb2.EchoRequest(text="hello", request_id="demo"), timeout=4)
 
+
 def wait_for(target):
     grpc.channel_ready_future(grpc.insecure_channel(target)).result(timeout=90)
+
 
 def main():
     for expected, target in SERVERS.items():
@@ -36,4 +38,6 @@ def main():
         print(f"PASS Python client -> {expected} server")
     print("Python client matrix passed")
 
-if __name__ == "__main__": main()
+
+if __name__ == "__main__":
+    main()

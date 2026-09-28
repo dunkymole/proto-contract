@@ -75,7 +75,109 @@ The compiler applies the calculated minimum automatically. You may pass `--bump 
 
 ## Runtime adapters
 
-Python, Go, Java, and .NET have client interceptors that attach the contract to every call and native server interceptors that reject incompatible calls before application logic runs. See [runtime integration](docs/RUNTIMES.md) for copyable examples.
+Python, Go, Java, and .NET have client interceptors that attach the contract to every call and native server interceptors that reject incompatible calls before application logic runs.
+
+### Python
+
+```python
+from concurrent import futures
+import grpc
+from proto_contract import ContractServerInterceptor, intercepted_channel
+
+# Client: use this channel when constructing generated stubs.
+channel = intercepted_channel("localhost:50051", "demo.echo", "1.0.0")
+
+# Server: the interceptor runs before the generated service handler.
+server = grpc.server(
+    futures.ThreadPoolExecutor(),
+    interceptors=(ContractServerInterceptor("demo.echo", "1.1.0"),),
+)
+```
+
+### Go
+
+```go
+import (
+    "log"
+
+    contract "github.com/dunkymole/proto-contract/runtimes/go/protocontract"
+    "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials/insecure"
+)
+
+// Client: construct generated clients from conn.
+conn, err := grpc.NewClient(
+    "localhost:50051",
+    grpc.WithTransportCredentials(insecure.NewCredentials()),
+    grpc.WithUnaryInterceptor(contract.UnaryClient("demo.echo", "1.0.0")),
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Server: register generated services on server.
+server := grpc.NewServer(
+    grpc.UnaryInterceptor(contract.UnaryServer("demo.echo", "1.1.0")),
+)
+```
+
+### Java
+
+```java
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.ServerBuilder;
+import io.grpc.ServerInterceptors;
+import io.github.dunkymole.protocontract.ContractClientInterceptor;
+import io.github.dunkymole.protocontract.ContractServerInterceptor;
+
+// Client: construct the generated stub from this channel.
+ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
+    .usePlaintext()
+    .intercept(new ContractClientInterceptor("demo.echo", "1.0.0"))
+    .build();
+
+// Server: EchoServiceImpl is the generated service implementation.
+io.grpc.Server server = ServerBuilder.forPort(50051)
+    .addService(ServerInterceptors.intercept(
+        new EchoServiceImpl(),
+        new ContractServerInterceptor("demo.echo", "1.1.0")))
+    .build();
+```
+
+### .NET
+
+```csharp
+using Grpc.Core.Interceptors;
+using Grpc.Net.Client;
+using ProtoContract;
+
+// Client: construct the generated client from this invoker.
+using var channel = GrpcChannel.ForAddress("https://api.example.com");
+var invoker = channel.Intercept(
+    new ContractClientInterceptor("demo.echo", "1.0.0"));
+
+// ASP.NET Core server registration.
+builder.Services.AddSingleton(
+    new ContractServerInterceptor("demo.echo", "1.1.0"));
+builder.Services.AddGrpc(options =>
+    options.Interceptors.Add<ContractServerInterceptor>());
+```
+
+The demo source contains complete runnable services and clients. See [runtime integration](docs/RUNTIMES.md) for behavior and dependency details.
+
+## Repository layout
+
+```text
+compiler/            schema snapshot and compatibility classifier
+contracts/           tracked contract locks
+proto/               example protobuf API
+gen/                  shared checked-in generated bindings
+runtimes/<language>/  reusable client and server interceptors
+examples/clients/     runnable clients, one directory per language
+examples/servers/     runnable servers, one directory per language
+scripts/              build and interoperability checks
+```
 
 ## What gets versioned
 

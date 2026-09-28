@@ -1,6 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>io.github.dunkymole</groupId><artifactId>proto-contract-demo</artifactId><version>0.1.0</version>
+  <groupId>io.github.dunkymole</groupId><artifactId>proto-contract-server-demo</artifactId><version>0.1.0</version>
   <properties><maven.compiler.release>21</maven.compiler.release><grpc.version>1.71.0</grpc.version><protobuf.version>4.30.2</protobuf.version></properties>
   <dependencies>
     <dependency><groupId>io.grpc</groupId><artifactId>grpc-netty-shaded</artifactId><version>${grpc.version}</version></dependency>

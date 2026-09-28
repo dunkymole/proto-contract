@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	pb "github.com/dunkymole/proto-contract/examples/servers/go/gen/demo/v1"
+	pb "github.com/dunkymole/proto-contract/gen/go/demo/v1"
 	contract "github.com/dunkymole/proto-contract/runtimes/go/protocontract"
 	"google.golang.org/grpc"
 )

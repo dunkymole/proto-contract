@@ -7,6 +7,6 @@ COPY runtimes/java/src/main/java src/main/java
 COPY examples/servers/java/src/main/java src/main/java
 RUN mvn -q package -DskipTests
 FROM eclipse-temurin:21-jre
-COPY --from=build /src/target/proto-contract-demo-0.1.0.jar /server.jar
+COPY --from=build /src/target/proto-contract-server-demo-0.1.0.jar /server.jar
 EXPOSE 50053
 ENTRYPOINT ["java","-jar","/server.jar"]

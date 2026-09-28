@@ -138,8 +138,8 @@ const file_demo_v1_echo_proto_rawDesc = "" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12'\n" +
 	"\x0fserver_language\x18\x02 \x01(\tR\x0eserverLanguage2B\n" +
 	"\vEchoService\x123\n" +
-	"\x04Echo\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponseB\x89\x01\n" +
-	")io.github.dunkymole.protocontract.demo.v1P\x01ZBgithub.com/dunkymole/proto-contract/examples/servers/go/gen;demov1\xaa\x02\x15ProtoContract.Demo.V1b\x06proto3"
+	"\x04Echo\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponseB\x80\x01\n" +
+	")io.github.dunkymole.protocontract.demo.v1P\x01Z9github.com/dunkymole/proto-contract/gen/go/demo/v1;demov1\xaa\x02\x15ProtoContract.Demo.V1b\x06proto3"
 
 var (
 	file_demo_v1_echo_proto_rawDescOnce sync.Once
