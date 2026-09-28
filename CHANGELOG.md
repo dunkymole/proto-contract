@@ -4,6 +4,8 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 ## Unreleased
 
+- Generate server interceptors alongside client interceptors for Python, Go, Java, and .NET; all server examples and documentation use generated configuration from their build's lock.
+
 - Generate lock-bound Python, Go, Java, and .NET client interceptors; all README client examples and matrix success paths use generated contracts.
 
 - Generate service-specific TypeScript contract interceptors from lock files with `proto-contract generate`; application examples import generated versions.

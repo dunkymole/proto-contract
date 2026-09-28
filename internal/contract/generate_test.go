@@ -20,6 +20,9 @@ func TestGenerateClientLanguages(t *testing.T) {
 					t.Fatalf("generated module does not contain %q", value)
 				}
 			}
+			if language != "typescript" && !strings.Contains(strings.ToLower(string(first)), "serverinterceptor") {
+				t.Fatal("generated contract is missing its server entry point")
+			}
 			second, err := Generate(s, language, "")
 			if err != nil || !bytes.Equal(first, second) {
 				t.Fatal("generation is not deterministic")

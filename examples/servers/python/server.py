@@ -2,7 +2,7 @@ from concurrent import futures
 import grpc
 
 from demo.v1 import echo_pb2, echo_pb2_grpc
-from proto_contract import ContractServerInterceptor
+from echo_contract import ServerInterceptor
 
 class EchoService(echo_pb2_grpc.EchoServiceServicer):
     def Echo(self, request, context):
@@ -11,7 +11,7 @@ class EchoService(echo_pb2_grpc.EchoServiceServicer):
 def main():
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=4),
-        interceptors=(ContractServerInterceptor("demo.echo", "1.1.0"),),
+        interceptors=(ServerInterceptor(),),
     )
     echo_pb2_grpc.add_EchoServiceServicer_to_server(EchoService(), server)
     server.add_insecure_port("[::]:50055")
