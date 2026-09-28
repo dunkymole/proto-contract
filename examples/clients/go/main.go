@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	echocontract "github.com/dunkymole/proto-contract/gen/go/contracts/echo"
 	pb "github.com/dunkymole/proto-contract/gen/go/demo/v1"
 	contract "github.com/dunkymole/proto-contract/runtimes/go/protocontract"
 	"google.golang.org/grpc"
@@ -16,8 +17,8 @@ import (
 
 var servers = map[string]string{"Go": "go-server:50051", "Java": "java-server:50053", ".NET": "dotnet-server:50054", "Python": "python-server:50055"}
 
-func call(target, version string) (*pb.EchoResponse, error) {
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(contract.UnaryClient("demo.echo", version)))
+func call(target string, interceptor grpc.UnaryClientInterceptor) (*pb.EchoResponse, error) {
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(interceptor))
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +30,7 @@ func call(target, version string) (*pb.EchoResponse, error) {
 
 func main() {
 	for expected, target := range servers {
-		response, err := call(target, "1.0.0")
+		response, err := call(target, echocontract.ClientInterceptor())
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -37,7 +38,7 @@ func main() {
 			log.Fatalf("unexpected response from %s: %v", expected, response)
 		}
 		for _, version := range []string{"1.2.0", "2.0.0"} {
-			_, err = call(target, version)
+			_, err = call(target, contract.UnaryClient("demo.echo", version))
 			if status.Code(err) != codes.FailedPrecondition {
 				log.Fatalf("%s accepted %s: %v", expected, version, err)
 			}

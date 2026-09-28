@@ -42,16 +42,14 @@ func usage() {
 func generate(args []string) error {
 	fs := flag.NewFlagSet("generate", flag.ContinueOnError)
 	lock := fs.String("lock", "", "contract lock used to build this client")
-	language := fs.String("lang", "typescript", "output language (typescript)")
+	language := fs.String("lang", "typescript", "output language: typescript, python, go, java, dotnet")
+	packageName := fs.String("package", "", "generated Go/Java package or .NET namespace")
 	out := fs.String("out", "", "generated module path")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *lock == "" || *out == "" {
 		return fmt.Errorf("--lock and --out are required")
-	}
-	if *language != "typescript" {
-		return fmt.Errorf("unsupported language %q", *language)
 	}
 	lockPath, err := filepath.Abs(*lock)
 	if err != nil {
@@ -68,7 +66,7 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
-	source, err := contract.TypeScript(s)
+	source, err := contract.Generate(s, *language, *packageName)
 	if err != nil {
 		return err
 	}
