@@ -1,6 +1,8 @@
 # Proto Contract
 
-Proto Contract gives protobuf APIs an explicit, enforceable compatibility version. It compiles a service and its reachable type graph into a deterministic lock file, calculates the minimum semantic version bump after a schema change, and supplies small gRPC runtime adapters for Python, Java, .NET, and Go.
+Proto Contract gives protobuf APIs an explicit, enforceable compatibility version. It compiles a service and its reachable type graph into a deterministic lock file, calculates the minimum semantic version bump after a schema change, and supplies small gRPC runtime adapters for Python, Java, .NET, Go, and TypeScript clients using [grpc-bridge](https://github.com/dunkymole/grpc-bridge).
+
+**grpc-bridge is supported:** bind a TypeScript contract to each generated service client to enforce compatibility from browsers or Node.js against any of the four server runtimes. Clients with independent contracts can share one bridge connection. The complete demo tests the real WebSocket bridge in its interoperability matrix.
 
 The rule is intentionally simple:
 
@@ -27,7 +29,7 @@ flowchart LR
 
 ## Try the complete demo
 
-You need Docker with Compose. The demonstration builds clients and servers in Python, Java, .NET, and Go. It exercises every client against every server: 16 language combinations, each with accepted and rejected contract versions.
+You need Docker with Compose. The demonstration builds clients and servers in Python, Java, .NET, and Go, plus a TypeScript client using grpc-bridge. It exercises all five clients against all four servers: 20 combinations, each with accepted and rejected contract versions. Docker builds the bridge and its TypeScript package from a pinned source revision, so no published npm release or local Node.js installation is required.
 
 ```powershell
 ./scripts/test-all.ps1
@@ -40,7 +42,8 @@ PASS Python client -> Go server
 PASS Go client -> Java server
 PASS Java client -> .NET server
 PASS .NET client -> Go server
-All 16 client/server combinations passed
+PASS TypeScript grpc-bridge client -> Go server
+All 20 client/server combinations passed (including TypeScript via grpc-bridge)
 ```
 
 ## Compiler workflow
@@ -76,6 +79,37 @@ The compiler applies the calculated minimum automatically. You may pass `--bump 
 ## Runtime adapters
 
 Python, Go, Java, and .NET have client interceptors that attach the contract to every call and native server interceptors that reject incompatible calls before application logic runs.
+
+### TypeScript / grpc-bridge
+
+Copy [the TypeScript adapter](runtimes/typescript/proto-contract.ts) into your client project and wrap the bridge transport separately for each generated service client:
+
+```typescript
+import { createClient } from "@connectrpc/connect";
+import { openBridgeConnection, interceptTransport } from "@dunkymole/grpc-bridge";
+import { contractClientInterceptor } from "./proto-contract.js";
+import { EchoService } from "./gen/demo/v1/echo_pb.js";
+
+const connection = await openBridgeConnection({
+  url: "wss://bridge.example.com/tunnel",
+  target: "echo-service:50051",
+});
+try {
+  const client = createClient(
+    EchoService,
+    interceptTransport(connection.transport, {
+      baseUrl: "http://echo-service:50051",
+      interceptors: [contractClientInterceptor("demo.echo", "1.0.0")],
+    }),
+  );
+  const reply = await client.echo({ text: "hello" }, { timeoutMs: 5000 });
+  console.log(reply.text);
+} finally {
+  await connection.close();
+}
+```
+
+This also works with `createBridgeConnection` and transports acquired from `createSharedBridgeConnection`. Each wrapper belongs to its service client; it leaves the shared transport unchanged. The bridge forwards the contract metadata to the native gRPC server, which enforces compatibility. See the [runnable grpc-bridge example](examples/clients/grpc-bridge/README.md) and [runtime details](docs/RUNTIMES.md#typescript--grpc-bridge-client).
 
 ### Python
 

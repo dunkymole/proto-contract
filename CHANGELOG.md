@@ -4,6 +4,8 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 ## Unreleased
 
+- TypeScript contract interceptor for grpc-bridge and a real bridge client in the expanded 5-by-4 interoperability matrix.
+
 - Initial contract compiler with deterministic reachable-graph locks.
 - Automatic none, minor, and major change classification.
 - Python client interceptor and Go, Java, and .NET server adapters.
