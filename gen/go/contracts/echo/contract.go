@@ -9,7 +9,7 @@ import (
 )
 
 const API = "demo.echo"
-const Version = "2.0.0"
+const Version = "1.0.0"
 const Service = "demo.v1.EchoService"
 
 // ClientInterceptor returns an interceptor bound to this package's generated contract.

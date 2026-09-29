@@ -374,6 +374,12 @@ func calculateDigest(s *Snapshot) (string, error) {
 	return "sha256:" + hex.EncodeToString(h[:]), nil
 }
 func Write(path string, s *Snapshot) error {
+	if s == nil || s.Format != 2 {
+		if s == nil {
+			return fmt.Errorf("cannot write an empty contract lock")
+		}
+		return fmt.Errorf("unsupported contract lock format %d; this pre-release supports format 2 only", s.Format)
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
@@ -392,6 +398,9 @@ func Read(path string) (*Snapshot, error) {
 	s := new(Snapshot)
 	if e = json.Unmarshal(b, s); e != nil {
 		return nil, e
+	}
+	if s.Format != 2 {
+		return nil, fmt.Errorf("unsupported contract lock format %d; this pre-release supports format 2 only", s.Format)
 	}
 	return s, nil
 }
@@ -637,66 +646,6 @@ func enumUsedByRequiredField(s *Snapshot, enum string) bool {
 	return false
 }
 
-// MigrateFormat1 upgrades a legacy lock only when its captured declarations
-// still match the supplied current descriptor. Since format 1 did not capture
-// defaults, migration always advances a major version to invalidate clients
-// whose schema semantics cannot be recovered.
-func MigrateFormat1(old, current *Snapshot) (*Snapshot, error) {
-	if old == nil || current == nil || old.Format != 1 {
-		return nil, fmt.Errorf("migration requires a format-1 lock and a compiled descriptor")
-	}
-	legacy := *current
-	legacy.Messages = append([]Message(nil), current.Messages...)
-	for i := range legacy.Messages {
-		legacy.Messages[i].Fields = append([]Field(nil), current.Messages[i].Fields...)
-	}
-	legacy.Enums = append([]Enum(nil), current.Enums...)
-	for i := range legacy.Enums {
-		legacy.Enums[i].Values = append([]EnumValue(nil), current.Enums[i].Values...)
-	}
-	legacy.Format = 1
-	legacy.Features = nil
-	for mi := range legacy.Messages {
-		legacy.Messages[mi].MapEntry = false
-		legacy.Messages[mi].Syntax = ""
-		for fi := range legacy.Messages[mi].Fields {
-			legacy.Messages[mi].Fields[fi].DefaultValue = ""
-			legacy.Messages[mi].Fields[fi].HasDefault = false
-			legacy.Messages[mi].Fields[fi].JSONName = ""
-		}
-	}
-	for ei := range legacy.Enums {
-		legacy.Enums[ei].DefaultName = ""
-		legacy.Enums[ei].Syntax = ""
-		for vi := range legacy.Enums[ei].Values {
-			legacy.Enums[ei].Values[vi].AliasOrder = 0
-		}
-		sort.Slice(legacy.Enums[ei].Values, func(i, j int) bool {
-			if legacy.Enums[ei].Values[i].Number == legacy.Enums[ei].Values[j].Number {
-				return legacy.Enums[ei].Values[i].Name < legacy.Enums[ei].Values[j].Name
-			}
-			return legacy.Enums[ei].Values[i].Number < legacy.Enums[ei].Values[j].Number
-		})
-	}
-	minimum, changes := Compare(old, &legacy)
-	if minimum != None {
-		return nil, fmt.Errorf("cannot migrate because the descriptor has structural changes; run update after migration: %s", strings.Join(changes, ", "))
-	}
-	result := *current
-	result.API = old.API
-	result.Format = 2
-	version, err := NextVersion(old.Version, Major)
-	if err != nil {
-		return nil, err
-	}
-	result.Version = version
-	digest, err := calculateDigest(&result)
-	if err != nil {
-		return nil, err
-	}
-	result.Digest = digest
-	return &result, nil
-}
 func compareFields(a, b Message, mark func(Bump, string)) {
 	am := map[int32]Field{}
 	for _, f := range a.Fields {

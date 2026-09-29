@@ -10,7 +10,7 @@ import (
 func TestGenerateClientLanguages(t *testing.T) {
 	for _, language := range []string{"typescript", "python", "go", "java", "dotnet"} {
 		t.Run(language, func(t *testing.T) {
-			s := &Snapshot{Format: 1, API: "example/orders:v1", Version: "2.3.4", Service: Service{Name: "example.v1.Orders"}}
+			s := &Snapshot{Format: 2, API: "example/orders:v1", Version: "2.3.4", Service: Service{Name: "example.v1.Orders"}}
 			first, err := Generate(s, language, "")
 			if err != nil {
 				t.Fatal(err)
@@ -44,7 +44,7 @@ func TestGenerateClientLanguages(t *testing.T) {
 }
 
 func TestGeneratePackageValidation(t *testing.T) {
-	s := &Snapshot{Format: 1, API: "api", Version: "1.0.0", Service: Service{Name: "Service"}}
+	s := &Snapshot{Format: 2, API: "api", Version: "1.0.0", Service: Service{Name: "Service"}}
 	for _, language := range []string{"go", "java", "dotnet"} {
 		for _, name := range []string{"package", "_", "bad-name", "a;evil", "a..b"} {
 			if _, err := Generate(s, language, name); err == nil {

@@ -10,7 +10,7 @@ import (
 func TestGenerateFromLock(t *testing.T) {
 	dir := t.TempDir()
 	lock := filepath.Join(dir, "contract.json")
-	contents := `{"format":1,"api":"example.orders","version":"2.3.0","service":{"name":"example.v1.Orders"}}`
+	contents := `{"format":2,"api":"example.orders","version":"2.3.0","service":{"name":"example.v1.Orders"}}`
 	if err := os.WriteFile(lock, []byte(contents), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestGenerateRequiresSupportedOptions(t *testing.T) {
 	}
 }
 
-func TestCheckAndUpdateRejectLegacyLocksExplicitly(t *testing.T) {
+func TestCheckAndUpdateRejectUnsupportedLockFormatsExplicitly(t *testing.T) {
 	dir := t.TempDir()
 	lock := filepath.Join(dir, "legacy.json")
 	contents := `{"format":1,"api":"demo.echo","version":"1.1.0","service":{"name":"demo.v1.EchoService"}}`
@@ -51,8 +51,8 @@ func TestCheckAndUpdateRejectLegacyLocksExplicitly(t *testing.T) {
 	}
 	args := []string{"--proto", "schema.proto", "--service", "demo.v1.EchoService", "--lock", lock}
 	for name, command := range map[string]func([]string) error{"check": check, "update": update} {
-		if err := command(args); err == nil || !strings.Contains(err.Error(), "lacks captured descriptor semantics") {
-			t.Fatalf("%s did not explain format-1 rejection: %v", name, err)
+		if err := command(args); err == nil || !strings.Contains(err.Error(), "unsupported contract lock format") {
+			t.Fatalf("%s did not explain unsupported format rejection: %v", name, err)
 		}
 	}
 	b, err := os.ReadFile(lock)

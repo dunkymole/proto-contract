@@ -7,7 +7,7 @@ import (
 )
 
 func TestTypeScriptUsesLock(t *testing.T) {
-	s := &Snapshot{Format: 1, API: "example.orders", Version: "2.3.4", Service: Service{Name: "example.v1.Orders"}}
+	s := &Snapshot{Format: 2, API: "example.orders", Version: "2.3.4", Service: Service{Name: "example.v1.Orders"}}
 	first, err := TypeScript(s)
 	if err != nil {
 		t.Fatal(err)
@@ -32,10 +32,10 @@ func TestTypeScriptRejectsInvalidLocks(t *testing.T) {
 	for _, s := range []*Snapshot{
 		nil,
 		{Format: 3, API: "api", Version: "1.0.0", Service: Service{Name: "Service"}},
-		{Format: 1, Version: "1.0.0", Service: Service{Name: "Service"}},
-		{Format: 1, API: "api@other", Version: "1.0.0", Service: Service{Name: "Service"}},
-		{Format: 1, API: "api", Version: "invalid", Service: Service{Name: "Service"}},
-		{Format: 1, API: "api", Version: "1.0.0"},
+		{Format: 1, API: "api", Version: "1.0.0", Service: Service{Name: "Service"}},
+		{Format: 2, API: "api@other", Version: "1.0.0", Service: Service{Name: "Service"}},
+		{Format: 2, API: "api", Version: "invalid", Service: Service{Name: "Service"}},
+		{Format: 2, API: "api", Version: "1.0.0"},
 	} {
 		if _, err := TypeScript(s); err == nil {
 			t.Fatalf("accepted invalid lock: %+v", s)
