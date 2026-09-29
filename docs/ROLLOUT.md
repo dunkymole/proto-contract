@@ -39,6 +39,21 @@ It also runs the external NodeNext strict-package fixture using the pinned
 grpc-bridge package, checking a descriptor graph with imports, maps, defaults,
 enums, optional fields, and all four RPC shapes.
 
+The bridge source defaults to reviewed commit
+`200f417ce5b070d2c6e5214870a2b0887fa9058f`. To run this proof with another
+companion commit, set `GRPC_BRIDGE_REF` before invoking the script; Compose
+forwards the same ref to the bridge and client images. The client build derives
+the local tarball integrity from the fetched artifact, then checks its
+name/version and dependency metadata against the consumer lock before `npm ci`.
+Refs whose package dependency graph changes fail until the consumer lock is
+reviewed and updated.
+
+```powershell
+$env:GRPC_BRIDGE_REF = "<reviewed-commit-sha>"
+./scripts/test-rollout.ps1
+Remove-Item Env:GRPC_BRIDGE_REF
+```
+
 ## Deployment guidance
 
 1. Deploy the additive server build everywhere the new client will be routed.

@@ -39,8 +39,16 @@ FROM node:24-alpine AS client
 RUN apk add --no-cache bash protobuf jq
 WORKDIR /app
 COPY --from=package /tmp/dunkymole-grpc-bridge-*.tgz ./grpc-bridge.tgz
+COPY --from=package /bridge/web/package.json ./grpc-bridge-package.json
+COPY examples/clients/grpc-bridge/verify-bridge-lock.mjs examples/clients/grpc-bridge/verify-bridge-lock.test.mjs ./
 COPY examples/clients/grpc-bridge/package*.json ./
-RUN npm ci --no-audit --no-fund
+# The source tree is fetched at an explicit commit, which can differ from the
+# checked-in default package tarball. Bind npm's local-file integrity to the
+# exact source artifact that this build just packed before verifying all other
+# dependencies with npm ci.
+RUN node --test ./verify-bridge-lock.test.mjs && \
+    node ./verify-bridge-lock.mjs && \
+    npm ci --no-audit --no-fund
 COPY examples/clients/grpc-bridge/*.ts examples/clients/grpc-bridge/tsconfig.json ./
 COPY runtimes/typescript ./runtime
 COPY proto /proto

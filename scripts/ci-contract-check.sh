@@ -31,7 +31,7 @@ set +e
 report=$("$bin" check --proto "$proto" --proto-path "$proto_path" --service "$service" --lock "$lock" --format json 2>"$stderr_file")
 check_status=$?
 set -e
-if ! jq -e 'type == "object" and (.api|type=="string") and (.status=="changed" or .status=="unchanged") and (.version|type=="string") and (.next_version|type=="string") and (.bump|type=="string") and (.changes|type=="array")' >/dev/null <<<"$report"; then
+if ! jq -e -s 'length == 1 and (.[0] | type == "object" and (.api|type=="string") and (.status=="changed" or .status=="unchanged") and (.version|type=="string") and (.next_version|type=="string") and (.bump|type=="string") and (.changes|type=="array"))' >/dev/null <<<"$report"; then
   cat "$stderr_file" >&2 || true
   echo "proto-contract check did not produce a valid JSON report" >&2
   exit 2
