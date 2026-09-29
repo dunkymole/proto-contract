@@ -1,6 +1,6 @@
 # Runtime integration
 
-All adapters use the ASCII gRPC metadata key `x-proto-contract` with value `<api>@<semver>`.
+All native adapters use the ASCII gRPC metadata key `x-proto-contract` with exactly one value, `<api>@<MAJOR.MINOR.PATCH>`. The API is 1–64 ASCII characters from `[A-Za-z0-9._:/-]`; this preserves identifiers such as `example/orders:v1`. The complete metadata value is at most 128 ASCII bytes. Version components are canonical nonnegative decimal integers no larger than `2147483647` (`0` or a nonzero digit followed by digits); signs, leading zeroes, whitespace, Unicode lookalikes, extra separators, and overflow are rejected. Every adapter applies the same rules at configuration construction and call validation.
 
 Use the [compiler setup and build workflow](COMPILER.md) before the commands below. The Orders/Inventory names in this guide are illustrative application services: replace them with your own locks, generated protobuf types, and package paths. The repository's runnable API is `demo.v1.EchoService`, used in the [README](../README.md#runtime-adapters).
 
@@ -17,17 +17,17 @@ proto-contract generate --lock contracts/orders.json --lang dotnet --package Con
 
 | Language | Generated client | Generated server | Runtime dependency |
 | --- | --- | --- | --- |
-| Python | `orders_contract.ClientInterceptor()` | `orders_contract.ServerInterceptor()` | `runtimes/python/proto_contract.py` on the import path |
-| Go | `orderscontract.ClientInterceptor()` | `orderscontract.ServerInterceptor()` | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` |
-| Java | `contracts.orders.Contract.clientInterceptor()` | `contracts.orders.Contract.serverInterceptor()` | Compile `runtimes/java/src/main/java` with the generated source |
-| .NET | `Contracts.Orders.Contract.ClientInterceptor()` | `Contracts.Orders.Contract.ServerInterceptor` type | Include both interceptor sources in `runtimes/dotnet` |
+| Python | `orders_contract.ClientInterceptor()` | `orders_contract.StrictServerInterceptor()` | `runtimes/python/proto_contract.py` on the import path |
+| Go | `orderscontract.ClientInterceptor()` | `orderscontract.StrictServer()` | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` |
+| Java | `contracts.orders.Contract.clientInterceptor()` | `contracts.orders.Contract.strictServerInterceptor()` | Compile `runtimes/java/src/main/java` with the generated source |
+| .NET | `Contracts.Orders.Contract.ClientInterceptor()` | `Contracts.Orders.Contract.StrictServerInterceptor()` | Include runtime interceptor sources in `runtimes/dotnet` |
 | TypeScript | `contractInterceptor` from its generated module | Native backend uses one of the server runtimes above | Connect 2.x; see below |
 
-`--package` sets the Go/Java package or C# namespace. Defaults are `contractgen`, `protocontract.generated`, and `ProtoContract.Generated`, respectively. Java emits a public class named `Contract`, so use `Contract.java`. Generate a distinct module/package/namespace per service. Generated metadata constants are available for inspection; application setup uses the no-argument entry points. The outputs retain each runtime adapter's existing RPC support; generation does not add streaming support to unary-only runtimes.
+`--package` sets the Go/Java package or C# namespace. Defaults are `contractgen`, `protocontract.generated`, and `ProtoContract.Generated`, respectively. Java emits a public class named `Contract`, so use `Contract.java`. Generate a distinct module/package/namespace per service. Generated metadata constants are available for inspection; application setup uses the no-argument entry points. Native Go, Python, Java, and .NET adapters enforce unary-unary, client-streaming, server-streaming, and bidirectional RPCs.
 
-Register every served contract. Python's generated server interceptor and Go's generated unary server interceptor enforce only their generated service name; register one interceptor for each service (use `grpc.ChainUnaryInterceptor` in Go). Java attaches its generated interceptor with `ServerInterceptors.intercept` on the matching service. In .NET, use the generated server interceptor type with `AddServiceOptions<YourService>` so separate services get separate contract configurations. The generated wrappers own no server or channel lifecycle.
+Use the generated strict dispatcher for servers that must fail closed. It owns a map from fully-qualified protobuf service names to each service's contract interceptor and rejects calls to any registered service missing from that map before reaching application handlers. Add intentional exemptions by fully-qualified name only. Install it globally: Python's `StrictServerInterceptor` in `grpc.server(..., interceptors=...)`, Go's generated `StrictServer` with both unary and stream chains, Java's `ServerBuilder.intercept(...)`, or .NET's global `AddGrpc(options => options.Interceptors.Add<StrictServerInterceptor>())`. Go can additionally call `ValidateRegisteredServices(server)` after registering services to detect a missing entry at startup; other adapters enforce the same rule at dispatch. Do not attach strict enforcement only to selected services, since a later service could otherwise bypass it. The generated wrappers own no server or channel lifecycle.
 
-An unrelated service is not protected by a Python/Go interceptor generated for another service. Register all of them explicitly. On clients, keep contract configuration scoped to the intended service: Java supports stub-level `withInterceptors`, .NET uses a service-specific call invoker, and grpc-bridge uses a separate transport wrapper. Python's intercepted channel and Go's connection interceptor attach their contract to every intercepted call; do not reuse those for a different service contract.
+On clients, generated interceptors are service-scoped and leave calls to other services unchanged, which lets independently generated clients share a channel. For multiple server contracts, combine each generated service interceptor in the strict dispatcher's contract map. Java and .NET examples use global strict dispatch so adding an unlisted service is denied. The dispatcher lets explicitly exempt services proceed without contract metadata; exemptions should be deliberate and kept narrow.
 
 ## Dependencies and generated files
 
@@ -47,17 +47,17 @@ These are demonstrated configurations, not a compatibility promise for every lan
 
 ## RPC coverage
 
-The 20-combination interoperability matrix tests unary calls only.
+The interoperability matrix exercises all four RPC shapes across Python, Go, Java, and .NET backends, plus the TypeScript grpc-bridge client. Focused tests use a shared malformed and boundary-case metadata vector corpus and make real streaming calls with accepted, missing, and incompatible contracts, asserting rejected calls never reach application handlers.
 
 | Adapter | Implemented interception |
 | --- | --- |
-| Python | Unary-unary client and server hooks |
-| Go | Unary client and server hooks |
-| .NET | Asynchronous unary client calls and unary server handlers; blocking client and streaming hooks are not implemented |
-| Java | Generic gRPC call interception; streaming behavior is not covered by this project's matrix |
-| TypeScript / grpc-bridge | Outgoing interceptor can run on all four shapes through `interceptTransport`; the matrix exercises unary calls and focused tests check stream handling |
+| Python | Unary-unary, client-streaming, server-streaming, and bidirectional client and server hooks |
+| Go | Unary, client-streaming, server-streaming, and bidirectional client and server hooks |
+| .NET | Blocking and asynchronous unary plus all streaming client and server hooks |
+| Java | Unary and all streaming client/server calls through gRPC call interception |
+| TypeScript / grpc-bridge | Outgoing interceptor is service-scoped and applies to all four shapes through `interceptTransport`; backend enforcement is performed by the native server runtime |
 
-Do not infer streaming enforcement on a backend from TypeScript's transport support. Generation binds the lock values to existing runtime behavior; it does not implement additional RPC hooks.
+The metadata parser is deliberately bounded and portable; malformed or duplicated values fail closed instead of being normalized.
 
 ## Running the examples
 
@@ -119,7 +119,7 @@ try {
 
 Use the same per-client wrapper with `openBridgeConnection` or `createBridgeConnection`. Contract configuration belongs to the generated service client, not a shared channel: create a separate wrapper for each API/version. Wrappers copy call headers and do not mutate the underlying transport or caller-owned headers. Close connections, release shared leases, and dispose shared handles when their owner shuts down.
 
-The adapter sets one contract value, replacing any existing value for that key while preserving other headers. It applies to unary and streaming requests without consuming or wrapping message streams. grpc-bridge preserves this request metadata through retries and connection replacement. Contract enforcement remains on the native gRPC server; the bridge forwards bytes without interpreting the contract. End-to-end validation in this project covers unary RPCs; backend hooks differ as described in [RPC coverage](#rpc-coverage).
+The adapter sets one contract value, replacing any existing value for that key while preserving other headers. It applies to unary and streaming requests without consuming or wrapping message streams. grpc-bridge preserves this request metadata through retries and connection replacement. Contract enforcement remains on the native gRPC server; the bridge forwards bytes without interpreting the contract. End-to-end validation covers all four RPC shapes against every native backend.
 
 The generated `contractInterceptor` is a standard Connect `Interceptor` and rejects use with a different service. Apply it per client using grpc-bridge's public `interceptTransport()`; do not register a fixed contract on the shared connection. No custom transport implementation or private bridge imports are needed. `baseUrl` identifies the logical backend to interceptors and does not change routing or open another connection.
 
@@ -145,20 +145,22 @@ stub = OrdersStub(channel)
 ## Python server
 
 ```python
-from orders_contract import ServerInterceptor
+from orders_contract import StrictServerInterceptor
 
 server = grpc.server(
     executor,
-    interceptors=(ServerInterceptor(),),
+    interceptors=(StrictServerInterceptor(),),
 )
 ```
 
 ## Go server
 
 ```go
-server := grpc.NewServer(
-    grpc.UnaryInterceptor(orderscontract.ServerInterceptor()),
-)
+strict, err := orderscontract.StrictServer() // accepts explicit service exemptions if needed
+if err != nil { log.Fatal(err) }
+server := grpc.NewServer(grpc.ChainUnaryInterceptor(strict.Unary()), grpc.ChainStreamInterceptor(strict.Stream()))
+orderspb.RegisterOrdersServer(server, implementation)
+if err := strict.ValidateRegisteredServices(server); err != nil { log.Fatal(err) }
 ```
 
 ## Go client
@@ -169,15 +171,15 @@ Import `orderscontract` from the module path where you generated `gen/orderscont
 connection, _ := grpc.NewClient(target,
     grpc.WithTransportCredentials(credentials),
     grpc.WithUnaryInterceptor(orderscontract.ClientInterceptor()),
+    grpc.WithStreamInterceptor(orderscontract.ClientStreamInterceptor()),
 )
 ```
 
 ## Java server
 
 ```java
-builder.addService(ServerInterceptors.intercept(
-    new OrdersService(),
-    contracts.orders.Contract.serverInterceptor()));
+builder.addService(new OrdersService());
+builder.intercept(contracts.orders.Contract.strictServerInterceptor());
 ```
 
 ## Java client
@@ -190,8 +192,8 @@ OrdersGrpc.OrdersBlockingStub stub = OrdersGrpc.newBlockingStub(channel)
 ## .NET server
 
 ```csharp
-services.AddGrpc().AddServiceOptions<OrdersService>(options =>
-    options.Interceptors.Add<Contracts.Orders.Contract.ServerInterceptor>());
+services.AddSingleton(Contracts.Orders.Contract.StrictServerInterceptor());
+services.AddGrpc(options => options.Interceptors.Add<ProtoContract.StrictServerInterceptor>());
 ```
 
 ## .NET client

@@ -1,0 +1,262 @@
+[
+  {
+    "name": "same-version",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.3"
+    ],
+    "compatible": true
+  },
+  {
+    "name": "older-minor",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.1.99"
+    ],
+    "compatible": true
+  },
+  {
+    "name": "wrong-api",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "other.echo@1.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "duplicate",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.3",
+      "demo.echo@1.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "missing",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [],
+    "compatible": false
+  },
+  {
+    "name": "negative",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@-1.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "plus-sign",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@+1.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "leading-zero",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@01.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "missing-component",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "extra-component",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.3.4"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "overflow",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@2147483648.0.0"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "oversized",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "trailing-lf",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.3\n"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "trailing-crlf",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.3\r\n"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "surrounding-space",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      " demo.echo@1.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "non-ascii-digit",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@١.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "comma-joined-duplicate",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.3,demo.echo@1.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "newer-minor",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.3.0"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "other-major",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@2.0.0"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "older-patch",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.0"
+    ],
+    "compatible": true
+  },
+  {
+    "name": "newer-patch",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.2147483647"
+    ],
+    "compatible": true
+  },
+  {
+    "name": "maximum-major-valid",
+    "api": "demo.echo",
+    "server": "2147483647.0.2147483647",
+    "values": [
+      "demo.echo@2147483647.0.0"
+    ],
+    "compatible": true
+  },
+  {
+    "name": "maximum-minor-valid",
+    "api": "demo.echo",
+    "server": "1.2147483647.0",
+    "values": [
+      "demo.echo@1.2147483647.0"
+    ],
+    "compatible": true
+  },
+  {
+    "name": "overflow-minor",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2147483648.0"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "overflow-patch",
+    "api": "demo.echo",
+    "server": "1.2.3",
+    "values": [
+      "demo.echo@1.2.2147483648"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "api-length-64",
+    "api": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "server": "0.0.0",
+    "values": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@0.0.0"
+    ],
+    "compatible": true
+  },
+  {
+    "name": "api-length-65",
+    "api": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "server": "0.0.0",
+    "values": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@0.0.0"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "non-ascii-api",
+    "api": "dém.echo",
+    "server": "1.2.3",
+    "values": [
+      "dém.echo@1.2.3"
+    ],
+    "compatible": false
+  },
+  {
+    "name": "api-path-colon",
+    "api": "example/orders:v1",
+    "server": "1.2.3",
+    "values": [
+      "example/orders:v1@1.2.3"
+    ],
+    "compatible": true
+  }
+]

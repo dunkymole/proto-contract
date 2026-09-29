@@ -2,28 +2,35 @@
 package echocontract
 
 import (
-	"context"
 	"github.com/dunkymole/proto-contract/runtimes/go/protocontract"
 	"google.golang.org/grpc"
-	"strings"
 )
 
 const API = "demo.echo"
-const Version = "1.0.0"
+const Version = "1.1.0"
 const Service = "demo.v1.EchoService"
 
-// ClientInterceptor returns an interceptor bound to this package's generated contract.
-func ClientInterceptor() grpc.UnaryClientInterceptor {
-	return protocontract.UnaryClient(API, Version)
+// Client returns validated, service-scoped client hooks for every RPC shape.
+func Client() *protocontract.Client {
+	client, err := protocontract.NewClient(API, Version, Service)
+	if err != nil {
+		panic(err)
+	}
+	return client
 }
+func ClientInterceptor() grpc.UnaryClientInterceptor        { return Client().Unary() }
+func ClientStreamInterceptor() grpc.StreamClientInterceptor { return Client().Stream() }
 
 // ServerInterceptor enforces this service's contract and leaves other services to their own interceptor.
-func ServerInterceptor() grpc.UnaryServerInterceptor {
-	enforce := protocontract.UnaryServer(API, Version)
-	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		if !strings.HasPrefix(info.FullMethod, "/"+Service+"/") {
-			return handler(ctx, req)
-		}
-		return enforce(ctx, req, info, handler)
+func Server() *protocontract.Server {
+	server, err := protocontract.NewServer(API, Version, Service)
+	if err != nil {
+		panic(err)
 	}
+	return server
+}
+func ServerInterceptor() grpc.UnaryServerInterceptor        { return Server().Unary() }
+func ServerStreamInterceptor() grpc.StreamServerInterceptor { return Server().Stream() }
+func StrictServer(exemptions ...string) (*protocontract.StrictServer, error) {
+	return protocontract.NewStrictServer(map[string]*protocontract.Server{Service: Server()}, exemptions)
 }

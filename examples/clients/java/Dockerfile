@@ -21,8 +21,10 @@ RUN mvn -q dependency:go-offline
 COPY proto/demo/v1/echo.proto proto/demo/v1/echo.proto
 COPY runtimes/java/src/main/java src/main/java
 COPY examples/clients/java/src/main/java src/main/java
+COPY runtimes/contract-vectors.json /contract-vectors.json
 COPY --from=contract-codegen /generated/java/Contract.java src/main/java/protocontract/generated/echo/Contract.java
 RUN mvn -q package -DskipTests
 FROM eclipse-temurin:21-jre
 COPY --from=build /src/target/proto-contract-client-demo-0.1.0.jar /client.jar
+COPY --from=build /contract-vectors.json /contract-vectors.json
 ENTRYPOINT ["java","-jar","/client.jar"]
