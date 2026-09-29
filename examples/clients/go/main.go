@@ -37,7 +37,7 @@ func main() {
 		if response.Text != "hello" || response.ServerLanguage != expected {
 			log.Fatalf("unexpected response from %s: %v", expected, response)
 		}
-		for _, version := range []string{"1.2.0", "2.0.0"} {
+		for _, version := range []string{"1.1.0", "2.1.0"} {
 			_, err = call(target, contract.UnaryClient("demo.echo", version))
 			if status.Code(err) != codes.FailedPrecondition {
 				log.Fatalf("%s accepted %s: %v", expected, version, err)

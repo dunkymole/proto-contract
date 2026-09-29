@@ -1,8 +1,8 @@
 {
-  "format": 1,
+  "format": 2,
   "api": "demo.echo",
-  "version": "1.1.0",
-  "digest": "sha256:a2f17cfaaa1e524c6a13cb51a66aebe637b1505b52f1fdb5de5f3365f103d82f",
+  "version": "2.0.0",
+  "digest": "sha256:c95ac306a5a374c429882fe8dcaee3d0d9c80c21d96b182b75741084eef0c827",
   "service": {
     "name": "demo.v1.EchoService",
     "methods": [
@@ -18,38 +18,50 @@
   "messages": [
     {
       "name": "demo.v1.EchoRequest",
+      "syntax": "proto3",
       "fields": [
         {
           "number": 1,
           "name": "text",
           "type": "TYPE_STRING",
+          "json_name": "text",
           "label": "LABEL_OPTIONAL"
         },
         {
           "number": 2,
           "name": "request_id",
           "type": "TYPE_STRING",
+          "json_name": "requestId",
           "label": "LABEL_OPTIONAL"
         }
       ]
     },
     {
       "name": "demo.v1.EchoResponse",
+      "syntax": "proto3",
       "fields": [
         {
           "number": 1,
           "name": "text",
           "type": "TYPE_STRING",
+          "json_name": "text",
           "label": "LABEL_OPTIONAL"
         },
         {
           "number": 2,
           "name": "server_language",
           "type": "TYPE_STRING",
+          "json_name": "serverLanguage",
           "label": "LABEL_OPTIONAL"
         }
       ]
     }
   ],
-  "enums": []
+  "enums": [],
+  "features": [
+    {
+      "name": "file-options:demo/v1/echo.proto",
+      "value": "0a29696f2e6769746875622e64756e6b796d6f6c652e70726f746f636f6e74726163742e64656d6f2e763150015a396769746875622e636f6d2f64756e6b796d6f6c652f70726f746f2d636f6e74726163742f67656e2f676f2f64656d6f2f76313b64656d6f7631aa021550726f746f436f6e74726163742e44656d6f2e5631"
+    }
+  ]
 }

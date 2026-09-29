@@ -30,7 +30,7 @@ def main():
         wait_for(target)
         response = call(target, ClientInterceptor())
         assert response.text == "hello" and response.server_language == expected, response
-        for rejected in ("1.2.0", "2.0.0"):
+        for rejected in ("1.1.0", "2.1.0"):
             try:
                 call(target, ContractClientInterceptor("demo.echo", rejected))
                 raise AssertionError(f"{expected} accepted incompatible {rejected}")
