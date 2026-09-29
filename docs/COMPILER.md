@@ -45,7 +45,7 @@ Use paths inside the current directory so Docker can access them. PowerShell doe
 Create one lock per service. `--service` is the fully qualified protobuf service name; `--api` is the stable compatibility identifier you choose. Initialize the version once when introducing the API:
 
 ```sh
-proto-contract snapshot --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --api demo.echo --version 1.1.0 --out contracts/demo.echo.json
+proto-contract snapshot --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --api demo.echo --version 2.0.0 --out contracts/demo.echo.json
 ```
 
 This creates parent directories and writes the output file, replacing it if present. The demo already has a lock; use it for checks rather than recreating it.
@@ -85,7 +85,15 @@ Choose the command for your language. Native modules contain both client and ser
 
 `generate` creates parent directories and replaces its output file. It is deterministic for the same lock and options. It does not verify the proto, modify the lock, calculate a version, or generate protobuf bindings. Generated files must not be edited manually. If you check them in, regenerate and review them alongside the lock; the Go demo contract is checked in and tested for consistency. Other demo contract modules are generated inside Docker images.
 
-Client and server builds use their respective lock revisions. A client built against `1.0.0` stays at that version when deployed against a server built against `1.1.0`. Updating a server does not rewrite a client's contract claim.
+Client and server builds use their respective lock revisions. A client built against `2.0.0` stays at that version when deployed against a server built against `2.1.0`. Updating a server does not rewrite a client's contract claim.
+
+New snapshots use lock format 2. Format-1 locks remain readable by `version` and `generate`; `check` and `update` reject them because they cannot establish the old explicit defaults. Migrate a format-1 lock against the proto that still matches its captured structure:
+
+```sh
+proto-contract migrate --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --lock contracts/demo.echo.json
+```
+
+Migration preserves the API identifier, captures the current format-2 descriptor, and advances the major version. This prevents clients built from a format-1 lock from being treated as compatible when its missing semantics are unknown. If the captured declarations differ, migration stops; review and update the schema separately.
 
 ## Command options
 
@@ -94,12 +102,13 @@ Client and server builds use their respective lock revisions. A client built aga
 | `snapshot` | `--proto`, `--service`, `--api`, `--version`, `--out` | `--proto-path` (default `.`), `--protoc` (default `protoc`) |
 | `check` | `--proto`, `--service`, `--lock` | `--proto-path`, `--protoc` |
 | `update` | `--proto`, `--service`, `--lock` | `--proto-path`, `--protoc`, `--bump` (default `auto`) |
+| `migrate` | `--proto`, `--service`, `--lock` | `--proto-path`, `--protoc` |
 | `generate` | `--lock`, `--out` | `--lang` (default `typescript`), `--package` |
 | `version` | `--lock` | None; prints only the stored version |
 
 `--lang` accepts `typescript`, `python`, `go`, `java`, and `dotnet`. `--package` sets the Go/Java package or .NET namespace; Python and TypeScript reject it. Defaults and output filenames are listed in [runtime integration](RUNTIMES.md#generate-client-and-server-contracts). `--proto-path` takes one import root; paths to imported protos must resolve under it.
 
-Use numeric `MAJOR.MINOR.PATCH` versions (no prerelease/build suffixes or leading zeros), a fully qualified protobuf service name, and a visible ASCII API identifier without spaces or `@`. Generation validates these fields and accepts lock format 1. API identity should remain stable as its service evolves; the lock version is separate from language package or application release versions.
+Use numeric `MAJOR.MINOR.PATCH` versions (no prerelease/build suffixes or leading zeros), a fully qualified protobuf service name, and a visible ASCII API identifier without spaces or `@`. Generation validates these fields and accepts lock formats 1 and 2. API identity should remain stable as its service evolves; the lock version is separate from language package or application release versions.
 
 ## Common failures
 

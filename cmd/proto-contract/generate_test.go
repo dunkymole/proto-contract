@@ -41,3 +41,18 @@ func TestGenerateRequiresSupportedOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckAndUpdateRejectLegacyLocksExplicitly(t *testing.T) {
+	dir := t.TempDir()
+	lock := filepath.Join(dir, "legacy.json")
+	contents := `{"format":1,"api":"demo.echo","version":"1.1.0","service":{"name":"demo.v1.EchoService"}}`
+	if err := os.WriteFile(lock, []byte(contents), 0644); err != nil { t.Fatal(err) }
+	args := []string{"--proto", "schema.proto", "--service", "demo.v1.EchoService", "--lock", lock}
+	for name, command := range map[string]func([]string) error{"check": check, "update": update} {
+		if err := command(args); err == nil || !strings.Contains(err.Error(), "lacks captured descriptor semantics") {
+			t.Fatalf("%s did not explain format-1 rejection: %v", name, err)
+		}
+	}
+	b, err := os.ReadFile(lock)
+	if err != nil || string(b) != contents { t.Fatal("legacy rejection modified the lock") }
+}

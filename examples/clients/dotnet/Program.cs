@@ -19,7 +19,7 @@ foreach (var (expected,target) in servers)
 {
     var response = await Call(target, EchoContract.ClientInterceptor());
     if (response.Text != "hello" || response.ServerLanguage != expected) throw new Exception($"Unexpected response from {expected}");
-    foreach (var rejected in new[]{"1.2.0","2.0.0"}) try { await Call(target, new ContractClientInterceptor("demo.echo", rejected)); throw new Exception($"{expected} accepted {rejected}"); }
+    foreach (var rejected in new[]{"1.1.0","2.1.0"}) try { await Call(target, new ContractClientInterceptor("demo.echo", rejected)); throw new Exception($"{expected} accepted {rejected}"); }
     catch (RpcException error) when (error.StatusCode == StatusCode.FailedPrecondition) { }
     Console.WriteLine($"PASS .NET client -> {expected} server");
 }

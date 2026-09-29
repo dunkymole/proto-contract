@@ -31,7 +31,7 @@ func TestTypeScriptUsesLock(t *testing.T) {
 func TestTypeScriptRejectsInvalidLocks(t *testing.T) {
 	for _, s := range []*Snapshot{
 		nil,
-		{Format: 2, API: "api", Version: "1.0.0", Service: Service{Name: "Service"}},
+		{Format: 3, API: "api", Version: "1.0.0", Service: Service{Name: "Service"}},
 		{Format: 1, Version: "1.0.0", Service: Service{Name: "Service"}},
 		{Format: 1, API: "api@other", Version: "1.0.0", Service: Service{Name: "Service"}},
 		{Format: 1, API: "api", Version: "invalid", Service: Service{Name: "Service"}},

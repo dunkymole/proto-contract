@@ -21,7 +21,7 @@ public final class Client {
     servers.forEach((expected,target) -> {
       EchoResponse response = call(target, Contract.clientInterceptor());
       if (!response.getText().equals("hello") || !response.getServerLanguage().equals(expected)) throw new AssertionError(response);
-      for (String rejected : new String[]{"1.2.0","2.0.0"}) try { call(target, new ContractClientInterceptor("demo.echo", rejected)); throw new AssertionError(expected+" accepted "+rejected); }
+      for (String rejected : new String[]{"1.1.0","2.1.0"}) try { call(target, new ContractClientInterceptor("demo.echo", rejected)); throw new AssertionError(expected+" accepted "+rejected); }
       catch (StatusRuntimeException error) { if (error.getStatus().getCode()!=Status.Code.FAILED_PRECONDITION) throw error; }
       System.out.println("PASS Java client -> "+expected+" server");
     });

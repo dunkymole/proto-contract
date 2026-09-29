@@ -147,7 +147,7 @@ public static class Contract
 }
 
 func validateGeneration(s *Snapshot) error {
-	if s == nil || s.Format != 1 {
+	if s == nil || (s.Format != 1 && s.Format != 2) {
 		return fmt.Errorf("unsupported contract lock format")
 	}
 	// These identifiers become ASCII gRPC metadata and protobuf service names.

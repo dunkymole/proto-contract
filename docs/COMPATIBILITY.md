@@ -21,7 +21,9 @@ Generated metadata uses numeric `MAJOR.MINOR.PATCH`. Handwritten noncanonical ve
 | Change the selected service name | major |
 | Add a method | minor |
 | Add a field with a new number | minor |
-| Add an enum value | minor |
+| Add an enum value not used by a required enum field | minor |
+| Add an enum value to an enum used by a required field | major |
+| Add a required field | major |
 | Remove or rename a method | major |
 | Change method input, output, or streaming shape | major |
 | Remove, rename, renumber, or retype a field | major |
@@ -29,7 +31,9 @@ Generated metadata uses numeric `MAJOR.MINOR.PATCH`. Handwritten noncanonical ve
 | Add a reachable message or enum | minor |
 | Remove or rename a reachable message or enum | major |
 
-Field comparison also includes label, referenced type, oneof membership, and proto3 optional presence. These changes require a major bump. Declaration order is normalized. The digest excludes the lock's version; it identifies the captured structure rather than the application release.
+Field comparison also includes label, referenced type, JSON name, oneof membership, proto3 optional presence, and explicit default values. Default changes require a major bump. Enum values are keyed by name, so aliases sharing a number remain distinct and removing, renaming, or reordering aliases requires a major bump. The default enum name and alias order for each numeric value are captured because they affect implicit values and canonical JSON names. Field and distinct-number enum declaration order is normalized. The digest excludes the lock's version; it identifies the captured structure rather than the application release.
+
+Format 2 supports proto2 and proto3 declarations reachable from the selected service, including field defaults, enum aliases, streaming shape, oneofs, proto3 optional fields, reserved declarations, and deterministic fingerprints of standard descriptor options. Option or reserved declaration changes are conservatively major. Custom or unrecognized options and uninterpreted options are rejected until their extension definitions can be checked. Edition syntax, groups, and extensions that affect reachable declarations are also rejected with an actionable unsupported-feature error. Unrelated declarations in imported files do not affect the snapshot.
 
 The policy is intentionally stricter than protobuf wire compatibility because generated source compatibility matters to application developers.
 
@@ -41,7 +45,7 @@ Descriptors cannot reveal every breaking behavior change. The `update --bump` ar
 
 ## Current limits
 
-- Only protobuf declarations reachable from one named service are considered.
-- Custom options, validation constraints, HTTP annotations, reserved ranges, default values, and edition features are not yet classified.
+- Only protobuf declarations reachable from one named service are considered. File-level and declaration options on files that own reachable declarations are fingerprinted because generated-source semantics may depend on them. Changing an option on an existing declaration is major; options on a newly added declaration follow that declaration's bump, except file-level option additions, which are major.
+- Business meaning, validation performed outside protobuf descriptors, and behavior changes inside handlers cannot be inferred; use `update --bump` to raise the version for those changes.
 - The full runtime matrix covers unary RPCs; some adapters lack streaming hooks. The metadata rule alone does not provide streaming enforcement.
-- The lock format has `format: 1` but remains experimental until a stable release.
+- Format-1 locks remain readable for version display and code generation, but `check` and `update` reject them because their defaults and other format-2 semantics cannot be reconstructed. Run `migrate` against the current proto; migration requires the captured structure to match and always advances the major version before writing a format-2 lock.

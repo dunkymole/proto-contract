@@ -21,6 +21,8 @@ func main() {
 		err = check(os.Args[2:])
 	case "update":
 		err = update(os.Args[2:])
+	case "migrate":
+		err = migrate(os.Args[2:])
 	case "version":
 		err = version(os.Args[2:])
 	case "generate":
@@ -89,6 +91,9 @@ func update(args []string) error {
 	old, err := contract.Read(*lock)
 	if err != nil {
 		return err
+	}
+	if old.Format != 2 {
+		return fmt.Errorf("format-%d lock lacks captured descriptor semantics; run migrate with the current proto to advance it safely", old.Format)
 	}
 	current, err := contract.Compile(*protoc, *path, *protoFile, *service, old.API, old.Version)
 	if err != nil {
@@ -164,6 +169,9 @@ func check(args []string) error {
 	if err != nil {
 		return err
 	}
+	if old.Format != 2 {
+		return fmt.Errorf("format-%d lock lacks captured descriptor semantics; run migrate with the current proto to advance it safely", old.Format)
+	}
 	current, err := contract.Compile(*protoc, *path, *proto, *service, old.API, old.Version)
 	if err != nil {
 		return err
@@ -178,6 +186,34 @@ func check(args []string) error {
 		fmt.Println(c)
 	}
 	return fmt.Errorf("contract changed; minimum bump is %s (%s -> %s)", bump, old.Version, next)
+}
+
+func migrate(args []string) error {
+	fs, protoFile, path, service, protoc := common("migrate", args)
+	lock := fs.String("lock", "", "format-1 contract lock to migrate")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *protoFile == "" || *service == "" || *lock == "" {
+		return fmt.Errorf("--proto, --service and --lock are required")
+	}
+	old, err := contract.Read(*lock)
+	if err != nil {
+		return err
+	}
+	current, err := contract.Compile(*protoc, *path, *protoFile, *service, old.API, old.Version)
+	if err != nil {
+		return err
+	}
+	migrated, err := contract.MigrateFormat1(old, current)
+	if err != nil {
+		return err
+	}
+	if err := contract.Write(*lock, migrated); err != nil {
+		return err
+	}
+	fmt.Printf("%s migrated to format %d at %s (%s)\n", migrated.API, migrated.Format, migrated.Version, migrated.Digest)
+	return nil
 }
 
 func version(args []string) error {
