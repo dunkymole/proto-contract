@@ -21,7 +21,7 @@ jobs:
     env:
       COMPOSE_PROJECT_NAME: proto-contract-validation-${{ github.run_id }}-${{ github.run_attempt }}
       GRPC_BRIDGE_REPOSITORY: https://github.com/dunkymole/grpc-bridge.git
-      GRPC_BRIDGE_REF: 41c0123f33c41372bfeb0dd8b90517b1a189ccee
+      GRPC_BRIDGE_REF: 87f0e1c86dcd53b64cd24948962ced5b3fc38f99
     steps:
       - name: Check out proposed revision
         uses: actions/checkout@v4
