@@ -1,0 +1,10 @@
+{
+  "bindings": [
+    {
+      "service": "demo.v1.EchoService",
+      "lock": "demo.echo.json",
+      "output": "generated/dotnet/Contract.cs",
+      "package": "ProtoContract.Generated.Echo"
+    }
+  ]
+}

@@ -113,33 +113,32 @@ The commands below assume `proto-contract` is installed on your `PATH`, or defin
 
 ### TypeScript / grpc-bridge
 
-Generate a service-specific interceptor from the contract lock used to build your client. The API name, service name, and version are generated; application code does not repeat them:
+Generate a contract artifact from the same descriptors used for Protobuf-ES bindings. The plugin checks the complete lock before it writes the descriptor-bound artifact. `contracts/typescript-bindings.json` maps the service to its lock, output, and generated descriptor import:
 
 ```sh
-proto-contract generate --lock contracts/demo.echo.json --lang typescript \
-  --out src/gen/echo_contract.ts
+protoc -I proto \
+  --plugin=protoc-gen-es=node_modules/.bin/protoc-gen-es \
+  --es_out=gen --es_opt=target=ts,import_extension=js \
+  --plugin=protoc-gen-proto-contract=protoc-gen-proto-contract \
+  --proto-contract_out=. \
+  --proto-contract_opt=lang=typescript,bindings=contracts/typescript-bindings.json \
+  demo/v1/echo.proto
 ```
 
-Run this after the normal protobuf generation step (using the compiler binary or Docker image built above). Register the generated interceptor separately for each service client:
+The bindings JSON uses named fields: `service`, `lock`, `output`, and, for TypeScript, `service_import` and `service_export`. Lock paths are relative to the JSON file. Output paths are portable paths relative to protoc's output root and cannot escape it. For native outputs, use `package` for the generated language package. Multiple service entries are sorted by service name; duplicate services and outputs are errors. The plugin checks every lock against the exact `CodeGeneratorRequest` descriptors and never rewrites a lock.
+
+Applications create a typed client from the generated artifact, with no hand-written metadata interceptor:
 
 ```typescript
-import { createClient } from "@connectrpc/connect";
-import { openBridgeConnection, interceptTransport } from "@dunkymole/grpc-bridge";
-import { contractInterceptor } from "./gen/echo_contract.js";
-import { EchoService } from "./gen/demo/v1/echo_pb.js";
+import { openBridgeConnection } from "@dunkymole/grpc-bridge";
+import { contract } from "./gen/echo_contract.js";
 
 const connection = await openBridgeConnection({
   url: "wss://bridge.example.com/tunnel",
   target: "echo-service:50051",
 });
 try {
-  const client = createClient(
-    EchoService,
-    interceptTransport(connection.transport, {
-      baseUrl: "http://echo-service:50051",
-      interceptors: [contractInterceptor],
-    }),
-  );
+  const client = connection.client(contract);
   const reply = await client.echo({ text: "hello" }, { timeoutMs: 5000 });
   console.log(reply.text);
 } finally {
@@ -147,7 +146,7 @@ try {
 }
 ```
 
-This also works with `createBridgeConnection` and transports acquired from `createSharedBridgeConnection`. Each wrapper belongs to its service client; it leaves the shared transport unchanged. The bridge forwards the contract metadata to the native gRPC server, which enforces compatibility. See the [runnable grpc-bridge example](examples/clients/grpc-bridge/README.md) and [runtime details](docs/RUNTIMES.md#typescript--grpc-bridge-client).
+This also works with `createBridgeConnection` and leases from `createSharedBridgeConnection`. Each contract client stays isolated on the shared connection. The generated artifact binds the actual Protobuf-ES service descriptor, lock fingerprint, and runtime graph; a stale protobuf binding fails during artifact creation. Lock-only TypeScript generation is rejected. See the [runnable grpc-bridge example](examples/clients/grpc-bridge/README.md) and [runtime details](docs/RUNTIMES.md#typescript--grpc-bridge-client).
 
 Regenerate when the client's contract lock changes. The generated module embeds that build's contract version; it must not read a deployed server's current version at runtime. Explicit versions in the interoperability tests are test fixtures for compatible and incompatible clients.
 

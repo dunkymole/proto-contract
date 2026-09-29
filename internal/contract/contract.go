@@ -72,6 +72,16 @@ type EnumValue struct {
 }
 
 func Compile(protoc, protoPath, protoFile, service, api, version string) (*Snapshot, error) {
+	set, err := CompileDescriptorSet(protoc, protoPath, protoFile)
+	if err != nil {
+		return nil, err
+	}
+	return Build(set, strings.TrimPrefix(service, "."), api, version)
+}
+
+// CompileDescriptorSet invokes protoc and returns the exact imported
+// descriptors used by a standalone generator invocation.
+func CompileDescriptorSet(protoc, protoPath, protoFile string) (*descriptorpb.FileDescriptorSet, error) {
 	tmp, err := os.CreateTemp("", "proto-contract-*.pb")
 	if err != nil {
 		return nil, err
@@ -90,7 +100,7 @@ func Compile(protoc, protoPath, protoFile, service, api, version string) (*Snaps
 	if err := proto.Unmarshal(b, set); err != nil {
 		return nil, err
 	}
-	return Build(set, strings.TrimPrefix(service, "."), api, version)
+	return set, nil
 }
 
 type index struct {

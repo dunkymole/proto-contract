@@ -78,8 +78,8 @@ The manifest records each released API, semantic version, and schema digest. It 
 
 1. Check the application's proto against its tracked lock; stop on failure. Do not automatically run `update` in a build, because that would accept an unreviewed change.
 2. Generate ordinary protobuf messages and service bindings with the language's protobuf tools.
-3. Generate Proto Contract's module from the same lock.
-4. Compile/package the generated module, protobuf bindings, and required runtime adapters together. Register the generated interceptor on each client and matching service.
+3. Generate Proto Contract's module from the same lock. The protoc plugin binds the same descriptor request to the lock and generates one output per explicitly mapped service.
+4. Compile/package the generated module, protobuf bindings, and required runtime adapters together. Register native interceptors on matching clients/services; strict TypeScript applications create clients with `connection.client(contract)`.
 
 For example, after a successful `check`:
 
@@ -88,12 +88,18 @@ proto-contract generate --lock contracts/demo.echo.json --lang python --out echo
 proto-contract generate --lock contracts/demo.echo.json --lang go --package echocontract --out gen/go/contracts/echo/contract.go
 proto-contract generate --lock contracts/demo.echo.json --lang java --package protocontract.generated.echo --out src/main/java/protocontract/generated/echo/Contract.java
 proto-contract generate --lock contracts/demo.echo.json --lang dotnet --package ProtoContract.Generated.Echo --out Generated/Contract.cs
-proto-contract generate --lock contracts/demo.echo.json --lang typescript --out src/gen/echo_contract.ts
+protoc -I proto \
+  --plugin=protoc-gen-es=node_modules/.bin/protoc-gen-es \
+  --es_out=gen --es_opt=target=ts,import_extension=js \
+  --plugin=protoc-gen-proto-contract=protoc-gen-proto-contract \
+  --proto-contract_out=. \
+  --proto-contract_opt=lang=typescript,bindings=contracts/typescript-bindings.json \
+  demo/v1/echo.proto
 ```
 
-Choose the command for your language. Native modules contain both client and server entry points; TypeScript supplies the grpc-bridge client interceptor. See [runtime integration](RUNTIMES.md) for registration and dependencies.
+The JSON bindings file contains named `service`, `lock`, and `output` properties; TypeScript entries also require `service_import` and `service_export`, and native entries may set `package`. Lock paths resolve relative to the bindings file. Outputs are relative to protoc's output root, cannot escape it, and duplicate services or output paths are rejected. The plugin validates the lock against the exact request descriptors and does not rewrite it. Native modules contain both client and server entry points; TypeScript emits a strict grpc-bridge contract definition bound to the generated Protobuf-ES service descriptor.
 
-`generate` creates parent directories and replaces its output file. It is deterministic for the same lock and options. It does not verify the proto, modify the lock, calculate a version, or generate protobuf bindings. Generated files must not be edited manually. If you check them in, regenerate and review them alongside the lock; the Go demo contract is checked in and tested for consistency. Other demo contract modules are generated inside Docker images.
+`generate` creates parent directories and replaces its output file. Native lock-based generation is deterministic. TypeScript generation requires `--proto`, `--service`, `--service-import`, and `--service-export`, and validates those descriptors against the lock before writing. The plugin is the recommended path when protobuf descriptors and contract bindings are generated together. Generated files must not be edited manually. If you check them in, regenerate and review them alongside the lock.
 
 Client and server builds use their respective lock revisions. A client built against `1.0.0` stays at that version when deployed against a server built against `1.1.0`. Updating a server does not rewrite a client's contract claim.
 
@@ -107,8 +113,10 @@ Snapshots use lock format 2, the sole format supported by this pre-release. Form
 | `check` | `--proto`, `--service`, `--lock` | `--proto-path`, `--protoc` |
 | `update` | `--proto`, `--service`, `--lock` | `--proto-path`, `--protoc`, `--bump` (default `auto`) |
 | `release-check` | `--base-lock`, `--lock`, `--history` | `--base-history` (absent only for bootstrap) |
-| `generate` | `--lock`, `--out` | `--lang` (default `typescript`), `--package` |
+| `generate` | `--lock`, `--out` | `--lang` (default `typescript`), `--package`; TypeScript additionally requires `--proto`, `--service`, `--service-import`, `--service-export`, with optional `--proto-path` and `--protoc` |
 | `version` | `--lock` | None; prints only the stored version |
+
+The protoc plugin is invoked as `--proto-contract_opt=lang=LANG,bindings=PATH`. Supported languages are `typescript`, `go`, `python`, `java`, and `dotnet`. The bindings path is resolved from the protoc process working directory; each lock path is resolved relative to the bindings JSON file. The plugin reads only files accessible to that local process and does not fetch remote locks.
 
 `--lang` accepts `typescript`, `python`, `go`, `java`, and `dotnet`. `--package` sets the Go/Java package or .NET namespace; Python and TypeScript reject it. Defaults and output filenames are listed in [runtime integration](RUNTIMES.md#generate-client-and-server-contracts). `--proto-path` takes one import root; paths to imported protos must resolve under it.
 

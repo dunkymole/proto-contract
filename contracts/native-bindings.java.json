@@ -1,0 +1,10 @@
+{
+  "bindings": [
+    {
+      "service": "demo.v1.EchoService",
+      "lock": "demo.echo.json",
+      "output": "generated/java/Contract.java",
+      "package": "protocontract.generated.echo"
+    }
+  ]
+}

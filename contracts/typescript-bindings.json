@@ -1,0 +1,11 @@
+{
+  "bindings": [
+    {
+      "service": "demo.v1.EchoService",
+      "lock": "demo.echo.json",
+      "output": "gen/echo_contract.ts",
+      "service_import": "./demo/v1/echo_pb.js",
+      "service_export": "EchoService"
+    }
+  ]
+}

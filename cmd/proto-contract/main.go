@@ -47,6 +47,12 @@ func generate(args []string) error {
 	language := fs.String("lang", "typescript", "output language: typescript, python, go, java, dotnet")
 	packageName := fs.String("package", "", "generated Go/Java package or .NET namespace")
 	out := fs.String("out", "", "generated module path")
+	protoFile := fs.String("proto", "", "root .proto file (required for strict TypeScript generation)")
+	protoPath := fs.String("proto-path", ".", "protoc import root")
+	service := fs.String("service", "", "fully-qualified protobuf service (required for TypeScript)")
+	protoc := fs.String("protoc", "protoc", "protoc executable")
+	serviceImport := fs.String("service-import", "", "TypeScript module specifier for the generated Protobuf-ES service")
+	serviceExport := fs.String("service-export", "", "TypeScript service descriptor export name")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -68,9 +74,30 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
-	source, err := contract.Generate(s, *language, *packageName)
-	if err != nil {
-		return err
+	var source []byte
+	if *language == "typescript" {
+		if *protoFile == "" || *service == "" || *serviceImport == "" || *serviceExport == "" {
+			return fmt.Errorf("strict TypeScript generation requires --proto, --service, --service-import and --service-export; use protoc-gen-proto-contract for multiple services")
+		}
+		set, err := contract.CompileDescriptorSet(*protoc, *protoPath, *protoFile)
+		if err != nil {
+			return err
+		}
+		if err := contract.ValidateSnapshotAgainst(s, set, *service); err != nil {
+			return fmt.Errorf("descriptor/lock validation failed: %w", err)
+		}
+		source, err = contract.TypeScriptBinding(s, set, *serviceImport, *serviceExport)
+		if err != nil {
+			return err
+		}
+	} else {
+		if *protoFile != "" || *service != "" || *serviceImport != "" || *serviceExport != "" {
+			return fmt.Errorf("--proto, --service, --service-import and --service-export are only valid for strict TypeScript generation")
+		}
+		source, err = contract.Generate(s, *language, *packageName)
+		if err != nil {
+			return err
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(*out), 0755); err != nil {
 		return err

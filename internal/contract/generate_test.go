@@ -8,7 +8,7 @@ import (
 )
 
 func TestGenerateClientLanguages(t *testing.T) {
-	for _, language := range []string{"typescript", "python", "go", "java", "dotnet"} {
+	for _, language := range []string{"python", "go", "java", "dotnet"} {
 		t.Run(language, func(t *testing.T) {
 			s := generationFixture(t)
 			first, err := Generate(s, language, "")
