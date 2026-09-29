@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package demo.v1;
+
+service EchoService {
+  rpc Echo(EchoRequest) returns (EchoResponse);
+  rpc EchoClientStream(stream EchoRequest) returns (EchoResponse);
+  rpc EchoServerStream(EchoRequest) returns (stream EchoResponse);
+  rpc EchoDuplex(stream EchoRequest) returns (stream EchoResponse);
+}
+
+message EchoRequest {
+  string text = 1;
+  string request_id = 2;
+}
+
+message EchoResponse {
+  string text = 1;
+  string server_language = 2;
+}

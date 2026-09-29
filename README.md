@@ -56,6 +56,8 @@ You need Docker with Compose v2, Linux container support, and PowerShell to run 
 
 The script removes its Compose containers and network when finished. For individual runs or a shell-only workflow, see [running examples](docs/RUNTIMES.md#running-the-examples).
 
+For additive and breaking deployments, explicit major-version destinations, stream draining, and rollback behavior, see the [rollout guide and executable scenario](docs/ROLLOUT.md).
+
 Expected result:
 
 ```text
@@ -90,6 +92,8 @@ docker run --rm -v "$PWD:/workspace" -w /workspace proto-contract check \
 ```
 
 `check` prints `unchanged` and exits successfully when the compared contract fields match. For a schema change, it exits nonzero and reports the minimum bump and required next version. After reviewing an intentional change, update the lock with the calculated minimum:
+
+For CI jobs, `check --format json` emits `api`, `status`, `version`, `next_version`, `bump`, and `changes` even when descriptor drift makes the command fail. The [CI helper and release-history example](examples/ci/README.md) publishes those fields and a job summary while preserving failure status.
 
 ```bash
 docker run --rm -v "$PWD:/workspace" -w /workspace proto-contract update \

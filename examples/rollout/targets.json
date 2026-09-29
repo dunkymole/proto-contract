@@ -1,0 +1,7 @@
+{
+  "targets": {
+    "rollout-old:50051": { "tls": false },
+    "rollout-new:50051": { "tls": false },
+    "rollout-major:50051": { "tls": false }
+  }
+}

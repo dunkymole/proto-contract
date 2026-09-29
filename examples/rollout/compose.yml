@@ -1,0 +1,45 @@
+services:
+  rollout-old:
+    build:
+      context: ../..
+      dockerfile: examples/rollout/server.Dockerfile
+      args:
+        SCHEMA: v1_0
+        BUILD_ID: v1.0.0
+  rollout-new:
+    build:
+      context: ../..
+      dockerfile: examples/rollout/server.Dockerfile
+      args:
+        SCHEMA: v1_1
+        BUILD_ID: v1.1.0
+  rollout-major:
+    build:
+      context: ../..
+      dockerfile: examples/rollout/server.Dockerfile
+      args:
+        SCHEMA: v2_0
+        BUILD_ID: v2.0.0
+  rollout-bridge:
+    build:
+      context: ../..
+      dockerfile: examples/clients/grpc-bridge/Dockerfile
+      target: bridge
+    environment:
+      LISTEN: 0.0.0.0:8080
+      UPSTREAM: rollout-new:50051
+      TARGETS_FILE: /config/rollout-targets.json
+    depends_on:
+      - rollout-old
+      - rollout-new
+      - rollout-major
+  rollout-client:
+    build:
+      context: ../..
+      dockerfile: examples/clients/grpc-bridge/Dockerfile
+      target: client
+    command: ["npm", "run", "rollout"]
+    environment:
+      BRIDGE_URL: ws://rollout-bridge:8080/tunnel
+    depends_on:
+      - rollout-bridge

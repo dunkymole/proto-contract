@@ -1,0 +1,82 @@
+{
+  "format": 2,
+  "api": "rollout.echo",
+  "version": "1.1.0",
+  "digest": "sha256:cc80321f8df5569acbcde6840eda6938518e6ee67a9cd5396e104730c17121ed",
+  "service": {
+    "name": "demo.v1.EchoService",
+    "methods": [
+      {
+        "name": "Echo",
+        "input": "demo.v1.EchoRequest",
+        "output": "demo.v1.EchoResponse",
+        "client_streaming": false,
+        "server_streaming": false
+      },
+      {
+        "name": "EchoClientStream",
+        "input": "demo.v1.EchoRequest",
+        "output": "demo.v1.EchoResponse",
+        "client_streaming": true,
+        "server_streaming": false
+      },
+      {
+        "name": "EchoDuplex",
+        "input": "demo.v1.EchoRequest",
+        "output": "demo.v1.EchoResponse",
+        "client_streaming": true,
+        "server_streaming": true
+      },
+      {
+        "name": "EchoServerStream",
+        "input": "demo.v1.EchoRequest",
+        "output": "demo.v1.EchoResponse",
+        "client_streaming": false,
+        "server_streaming": true
+      }
+    ]
+  },
+  "messages": [
+    {
+      "name": "demo.v1.EchoRequest",
+      "syntax": "proto3",
+      "fields": [
+        {
+          "number": 1,
+          "name": "text",
+          "type": "TYPE_STRING",
+          "json_name": "text",
+          "label": "LABEL_OPTIONAL"
+        },
+        {
+          "number": 2,
+          "name": "request_id",
+          "type": "TYPE_STRING",
+          "json_name": "requestId",
+          "label": "LABEL_OPTIONAL"
+        }
+      ]
+    },
+    {
+      "name": "demo.v1.EchoResponse",
+      "syntax": "proto3",
+      "fields": [
+        {
+          "number": 1,
+          "name": "text",
+          "type": "TYPE_STRING",
+          "json_name": "text",
+          "label": "LABEL_OPTIONAL"
+        },
+        {
+          "number": 2,
+          "name": "server_language",
+          "type": "TYPE_STRING",
+          "json_name": "serverLanguage",
+          "label": "LABEL_OPTIONAL"
+        }
+      ]
+    }
+  ],
+  "enums": []
+}

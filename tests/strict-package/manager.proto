@@ -1,0 +1,30 @@
+syntax = "proto2";
+package review.binding;
+import "imported.proto";
+enum Mode {
+  option allow_alias = true;
+  MODE_FIRST = 2;
+  MODE_SECOND = 2;
+  OTHER = 3;
+}
+message Payload {
+  optional float fractional = 1 [default = 0.1];
+  optional double negative_zero = 2 [default = -0];
+  optional bytes octets = 3 [default = "\000\377\001"];
+  optional uint64 maximum = 4 [default = 18446744073709551615, jstype = JS_STRING];
+  repeated int64 long_values = 5 [packed = true, jstype = JS_STRING];
+  optional Mode mode = 6 [default = MODE_SECOND];
+  optional review.imported.Leaf imported = 7;
+  map<string, review.imported.Leaf> nested = 8;
+  oneof to_json {
+    string constructor = 9;
+    int32 foo_2_bar = 10;
+  }
+  optional string to_string = 11;
+}
+service ContractService {
+  rpc Get_URL(Payload) returns (Payload);
+  rpc Constructor(Payload) returns (stream Payload);
+  rpc Input(stream Payload) returns (Payload);
+  rpc Duplex(stream Payload) returns (stream Payload);
+}
