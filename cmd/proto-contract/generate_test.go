@@ -32,6 +32,9 @@ func TestGenerateFromLock(t *testing.T) {
 	if err := generate([]string{"--lock", lock, "--lang", "typescript", "--out", filepath.Join(dir, "unbound.ts")}); err == nil || !strings.Contains(err.Error(), "requires --proto") {
 		t.Fatalf("lock-only TypeScript generation was not rejected: %v", err)
 	}
+	if err := generate([]string{"--lock", lock, "--lang", "typescript", "--package", "example.generated", "--out", filepath.Join(dir, "invalid.ts")}); err == nil || !strings.Contains(err.Error(), "--package is only valid for native generation") {
+		t.Fatalf("TypeScript --package was not rejected: %v", err)
+	}
 	b, err = os.ReadFile(lock)
 	if err != nil || !bytes.Equal(b, contents) {
 		t.Fatal("generation changed the input lock")

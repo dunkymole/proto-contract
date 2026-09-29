@@ -76,6 +76,9 @@ func generate(args []string) error {
 	}
 	var source []byte
 	if *language == "typescript" {
+		if *packageName != "" {
+			return fmt.Errorf("--package is only valid for native generation; TypeScript uses a service import and export")
+		}
 		if *protoFile == "" || *service == "" || *serviceImport == "" || *serviceExport == "" {
 			return fmt.Errorf("strict TypeScript generation requires --proto, --service, --service-import and --service-export; use protoc-gen-proto-contract for multiple services")
 		}
