@@ -19,9 +19,11 @@ WORKDIR /src
 COPY proto /proto
 COPY runtimes/dotnet /runtimes/dotnet
 COPY examples/clients/dotnet .
+COPY runtimes/contract-vectors.json /contract-vectors.json
 COPY --from=contract-codegen /generated/dotnet/Contract.cs Generated/Contract.cs
 RUN dotnet publish ProtoContractClientDemo.csproj -c Release -o /out
 FROM mcr.microsoft.com/dotnet/runtime:9.0
 COPY --from=build /out /app
+COPY --from=build /contract-vectors.json /contract-vectors.json
 WORKDIR /app
 ENTRYPOINT ["dotnet","ProtoContractClientDemo.dll"]

@@ -11,7 +11,7 @@ A server accepts a client when both conditions hold:
 
 The API identifier must also match. Patch does not affect the comparison. On a registered, supported RPC, missing metadata, a wrong API identifier, or incompatible major/minor versions produce gRPC `FAILED_PRECONDITION` before the application handler runs. See [RPC coverage and registration](RUNTIMES.md) for the scope of each runtime.
 
-Generated metadata uses numeric `MAJOR.MINOR.PATCH`. Handwritten noncanonical versions and duplicate metadata do not have identical parsing behavior across the current adapters; do not use them as a portable protocol. Register the generated interceptor and avoid adding a second contract header manually.
+The metadata parser is shared across runtimes: the API is 1–64 ASCII characters in `[A-Za-z0-9._:/-]`, the complete value is at most 128 ASCII bytes, and exactly one metadata value must be present. Version components use canonical nonnegative decimal syntax and are each bounded by `2147483647`. Leading zeroes, whitespace, signs, Unicode digits, malformed separators, overflow, and duplicate values fail closed. Generated clients replace any stale value for this key while preserving other metadata.
 
 ## Compiler classification
 
@@ -48,5 +48,5 @@ Descriptors cannot reveal every breaking behavior change. The `update --bump` ar
 
 - Only protobuf declarations reachable from one named service are considered. File-level and declaration options on files that own reachable declarations are fingerprinted because generated-source semantics may depend on them. Changing an option on an existing declaration is major; options on a newly added declaration follow that declaration's bump, except file-level option additions, which are major.
 - Business meaning, validation performed outside protobuf descriptors, and behavior changes inside handlers cannot be inferred; use `update --bump` to raise the version for those changes.
-- The full runtime matrix covers unary RPCs; some adapters lack streaming hooks. The metadata rule alone does not provide streaming enforcement.
+- All four native RPC shapes are enforced by Python, Go, Java, and .NET. The TypeScript grpc-bridge client stamps all four shapes; it relies on the native gRPC server for enforcement. Strict server dispatchers own service-to-contract registration and reject an unregistered service before its handler runs; intentional exemptions must be explicit.
 - Lock format 2 is the only supported format for this pre-release. Format 1 and unknown future formats fail with an explicit unsupported-format error. A future format change will be introduced as a deliberate compiler release with a documented parser and transition policy; API semantic versions describe schema compatibility and do not encode the lock serialization format.

@@ -19,7 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	EchoService_Echo_FullMethodName = "/demo.v1.EchoService/Echo"
+	EchoService_Echo_FullMethodName             = "/demo.v1.EchoService/Echo"
+	EchoService_EchoClientStream_FullMethodName = "/demo.v1.EchoService/EchoClientStream"
+	EchoService_EchoServerStream_FullMethodName = "/demo.v1.EchoService/EchoServerStream"
+	EchoService_EchoDuplex_FullMethodName       = "/demo.v1.EchoService/EchoDuplex"
 )
 
 // EchoServiceClient is the client API for EchoService service.
@@ -27,6 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EchoServiceClient interface {
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
+	EchoClientStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[EchoRequest, EchoResponse], error)
+	EchoServerStream(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EchoResponse], error)
+	EchoDuplex(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[EchoRequest, EchoResponse], error)
 }
 
 type echoServiceClient struct {
@@ -47,11 +53,59 @@ func (c *echoServiceClient) Echo(ctx context.Context, in *EchoRequest, opts ...g
 	return out, nil
 }
 
+func (c *echoServiceClient) EchoClientStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[EchoRequest, EchoResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &EchoService_ServiceDesc.Streams[0], EchoService_EchoClientStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[EchoRequest, EchoResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EchoService_EchoClientStreamClient = grpc.ClientStreamingClient[EchoRequest, EchoResponse]
+
+func (c *echoServiceClient) EchoServerStream(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EchoResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &EchoService_ServiceDesc.Streams[1], EchoService_EchoServerStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[EchoRequest, EchoResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EchoService_EchoServerStreamClient = grpc.ServerStreamingClient[EchoResponse]
+
+func (c *echoServiceClient) EchoDuplex(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[EchoRequest, EchoResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &EchoService_ServiceDesc.Streams[2], EchoService_EchoDuplex_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[EchoRequest, EchoResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EchoService_EchoDuplexClient = grpc.BidiStreamingClient[EchoRequest, EchoResponse]
+
 // EchoServiceServer is the server API for EchoService service.
 // All implementations must embed UnimplementedEchoServiceServer
 // for forward compatibility.
 type EchoServiceServer interface {
 	Echo(context.Context, *EchoRequest) (*EchoResponse, error)
+	EchoClientStream(grpc.ClientStreamingServer[EchoRequest, EchoResponse]) error
+	EchoServerStream(*EchoRequest, grpc.ServerStreamingServer[EchoResponse]) error
+	EchoDuplex(grpc.BidiStreamingServer[EchoRequest, EchoResponse]) error
 	mustEmbedUnimplementedEchoServiceServer()
 }
 
@@ -64,6 +118,15 @@ type UnimplementedEchoServiceServer struct{}
 
 func (UnimplementedEchoServiceServer) Echo(context.Context, *EchoRequest) (*EchoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Echo not implemented")
+}
+func (UnimplementedEchoServiceServer) EchoClientStream(grpc.ClientStreamingServer[EchoRequest, EchoResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method EchoClientStream not implemented")
+}
+func (UnimplementedEchoServiceServer) EchoServerStream(*EchoRequest, grpc.ServerStreamingServer[EchoResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method EchoServerStream not implemented")
+}
+func (UnimplementedEchoServiceServer) EchoDuplex(grpc.BidiStreamingServer[EchoRequest, EchoResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method EchoDuplex not implemented")
 }
 func (UnimplementedEchoServiceServer) mustEmbedUnimplementedEchoServiceServer() {}
 func (UnimplementedEchoServiceServer) testEmbeddedByValue()                     {}
@@ -104,6 +167,31 @@ func _EchoService_Echo_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EchoService_EchoClientStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(EchoServiceServer).EchoClientStream(&grpc.GenericServerStream[EchoRequest, EchoResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EchoService_EchoClientStreamServer = grpc.ClientStreamingServer[EchoRequest, EchoResponse]
+
+func _EchoService_EchoServerStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(EchoRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(EchoServiceServer).EchoServerStream(m, &grpc.GenericServerStream[EchoRequest, EchoResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EchoService_EchoServerStreamServer = grpc.ServerStreamingServer[EchoResponse]
+
+func _EchoService_EchoDuplex_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(EchoServiceServer).EchoDuplex(&grpc.GenericServerStream[EchoRequest, EchoResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EchoService_EchoDuplexServer = grpc.BidiStreamingServer[EchoRequest, EchoResponse]
+
 // EchoService_ServiceDesc is the grpc.ServiceDesc for EchoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +202,129 @@ var EchoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Echo",
 			Handler:    _EchoService_Echo_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "EchoClientStream",
+			Handler:       _EchoService_EchoClientStream_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "EchoServerStream",
+			Handler:       _EchoService_EchoServerStream_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "EchoDuplex",
+			Handler:       _EchoService_EchoDuplex_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "demo/v1/echo.proto",
+}
+
+const (
+	UnprotectedService_Call_FullMethodName = "/demo.v1.UnprotectedService/Call"
+)
+
+// UnprotectedServiceClient is the client API for UnprotectedService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Deliberately has no generated contract; runtime tests verify strict dispatch rejects it.
+type UnprotectedServiceClient interface {
+	Call(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
+}
+
+type unprotectedServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewUnprotectedServiceClient(cc grpc.ClientConnInterface) UnprotectedServiceClient {
+	return &unprotectedServiceClient{cc}
+}
+
+func (c *unprotectedServiceClient) Call(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EchoResponse)
+	err := c.cc.Invoke(ctx, UnprotectedService_Call_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// UnprotectedServiceServer is the server API for UnprotectedService service.
+// All implementations must embed UnimplementedUnprotectedServiceServer
+// for forward compatibility.
+//
+// Deliberately has no generated contract; runtime tests verify strict dispatch rejects it.
+type UnprotectedServiceServer interface {
+	Call(context.Context, *EchoRequest) (*EchoResponse, error)
+	mustEmbedUnimplementedUnprotectedServiceServer()
+}
+
+// UnimplementedUnprotectedServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedUnprotectedServiceServer struct{}
+
+func (UnimplementedUnprotectedServiceServer) Call(context.Context, *EchoRequest) (*EchoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Call not implemented")
+}
+func (UnimplementedUnprotectedServiceServer) mustEmbedUnimplementedUnprotectedServiceServer() {}
+func (UnimplementedUnprotectedServiceServer) testEmbeddedByValue()                            {}
+
+// UnsafeUnprotectedServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to UnprotectedServiceServer will
+// result in compilation errors.
+type UnsafeUnprotectedServiceServer interface {
+	mustEmbedUnimplementedUnprotectedServiceServer()
+}
+
+func RegisterUnprotectedServiceServer(s grpc.ServiceRegistrar, srv UnprotectedServiceServer) {
+	// If the following call pancis, it indicates UnimplementedUnprotectedServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&UnprotectedService_ServiceDesc, srv)
+}
+
+func _UnprotectedService_Call_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EchoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UnprotectedServiceServer).Call(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UnprotectedService_Call_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UnprotectedServiceServer).Call(ctx, req.(*EchoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// UnprotectedService_ServiceDesc is the grpc.ServiceDesc for UnprotectedService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var UnprotectedService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "demo.v1.UnprotectedService",
+	HandlerType: (*UnprotectedServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Call",
+			Handler:    _UnprotectedService_Call_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

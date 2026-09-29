@@ -136,9 +136,15 @@ const file_demo_v1_echo_proto_rawDesc = "" +
 	"request_id\x18\x02 \x01(\tR\trequestId\"K\n" +
 	"\fEchoResponse\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12'\n" +
-	"\x0fserver_language\x18\x02 \x01(\tR\x0eserverLanguage2B\n" +
+	"\x0fserver_language\x18\x02 \x01(\tR\x0eserverLanguage2\x87\x02\n" +
 	"\vEchoService\x123\n" +
-	"\x04Echo\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponseB\x80\x01\n" +
+	"\x04Echo\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponse\x12A\n" +
+	"\x10EchoClientStream\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponse(\x01\x12A\n" +
+	"\x10EchoServerStream\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponse0\x01\x12=\n" +
+	"\n" +
+	"EchoDuplex\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponse(\x010\x012I\n" +
+	"\x12UnprotectedService\x123\n" +
+	"\x04Call\x12\x14.demo.v1.EchoRequest\x1a\x15.demo.v1.EchoResponseB\x80\x01\n" +
 	")io.github.dunkymole.protocontract.demo.v1P\x01Z9github.com/dunkymole/proto-contract/gen/go/demo/v1;demov1\xaa\x02\x15ProtoContract.Demo.V1b\x06proto3"
 
 var (
@@ -160,9 +166,17 @@ var file_demo_v1_echo_proto_goTypes = []any{
 }
 var file_demo_v1_echo_proto_depIdxs = []int32{
 	0, // 0: demo.v1.EchoService.Echo:input_type -> demo.v1.EchoRequest
-	1, // 1: demo.v1.EchoService.Echo:output_type -> demo.v1.EchoResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	0, // 1: demo.v1.EchoService.EchoClientStream:input_type -> demo.v1.EchoRequest
+	0, // 2: demo.v1.EchoService.EchoServerStream:input_type -> demo.v1.EchoRequest
+	0, // 3: demo.v1.EchoService.EchoDuplex:input_type -> demo.v1.EchoRequest
+	0, // 4: demo.v1.UnprotectedService.Call:input_type -> demo.v1.EchoRequest
+	1, // 5: demo.v1.EchoService.Echo:output_type -> demo.v1.EchoResponse
+	1, // 6: demo.v1.EchoService.EchoClientStream:output_type -> demo.v1.EchoResponse
+	1, // 7: demo.v1.EchoService.EchoServerStream:output_type -> demo.v1.EchoResponse
+	1, // 8: demo.v1.EchoService.EchoDuplex:output_type -> demo.v1.EchoResponse
+	1, // 9: demo.v1.UnprotectedService.Call:output_type -> demo.v1.EchoResponse
+	5, // [5:10] is the sub-list for method output_type
+	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -181,7 +195,7 @@ func file_demo_v1_echo_proto_init() {
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_demo_v1_echo_proto_goTypes,
 		DependencyIndexes: file_demo_v1_echo_proto_depIdxs,

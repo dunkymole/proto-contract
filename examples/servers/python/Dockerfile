@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY proto/demo/v1/echo.proto /app/proto/demo/v1/echo.proto
 RUN python -m grpc_tools.protoc -I/app/proto --python_out=/app --grpc_python_out=/app /app/proto/demo/v1/echo.proto
 COPY runtimes/python/proto_contract.py /app/proto_contract.py
+COPY runtimes/contract-vectors.json /app/contract-vectors.json
 COPY examples/servers/python/server.py /app/server.py
 COPY --from=contract-codegen /generated/echo_contract.py /app/echo_contract.py
 COPY examples/servers/python/test_contract.py /app/test_contract.py

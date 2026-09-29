@@ -8,5 +8,6 @@
     <Protobuf Include="../../../proto/demo/v1/echo.proto" GrpcServices="Client" />
     <Compile Include="../../../runtimes/dotnet/ContractClientInterceptor.cs" Link="ContractClientInterceptor.cs" />
     <Compile Include="../../../runtimes/dotnet/ContractServerInterceptor.cs" Link="ContractServerInterceptor.cs" />
+    <Compile Include="../../../runtimes/dotnet/StrictServerInterceptor.cs" Link="StrictServerInterceptor.cs" />
   </ItemGroup>
 </Project>

@@ -9,6 +9,14 @@ option csharp_namespace = "ProtoContract.Demo.V1";
 
 service EchoService {
   rpc Echo(EchoRequest) returns (EchoResponse);
+  rpc EchoClientStream(stream EchoRequest) returns (EchoResponse);
+  rpc EchoServerStream(EchoRequest) returns (stream EchoResponse);
+  rpc EchoDuplex(stream EchoRequest) returns (stream EchoResponse);
+}
+
+// Deliberately has no generated contract; runtime tests verify strict dispatch rejects it.
+service UnprotectedService {
+  rpc Call(EchoRequest) returns (EchoResponse);
 }
 
 message EchoRequest {

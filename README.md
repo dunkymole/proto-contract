@@ -44,7 +44,7 @@ sequenceDiagram
   end
 ```
 
-**Python, Go, Java, .NET, and grpc-bridge TypeScript clients are supported.** With [grpc-bridge](https://github.com/dunkymole/grpc-bridge), independent generated clients can share one bridge connection while declaring their own contracts. The real bridge is included in the 20-combination interoperability matrix. End-to-end coverage currently focuses on unary RPCs; see [runtime coverage](docs/RUNTIMES.md#rpc-coverage).
+**Python, Go, Java, .NET, and grpc-bridge TypeScript clients are supported.** With [grpc-bridge](https://github.com/dunkymole/grpc-bridge), independent generated clients can share one bridge connection while declaring their own contracts. The interoperability matrix covers all four RPC shapes; native strict server dispatch rejects unknown service registrations before application handlers run. See [runtime coverage](docs/RUNTIMES.md#rpc-coverage).
 
 ## Try the complete demo
 
@@ -103,7 +103,7 @@ Commit the reviewed lock, then generate each application's contract module from 
 
 ## Runtime adapters
 
-Python, Go, Java, and .NET have client interceptors that attach contract metadata and native server interceptors that reject incompatible calls before application logic runs, for their [supported RPC shapes](docs/RUNTIMES.md#rpc-coverage).
+Python, Go, Java, and .NET have service-scoped client interceptors and strict native server dispatchers that reject incompatible calls or unknown services before application logic runs, for all [four RPC shapes](docs/RUNTIMES.md#rpc-coverage).
 
 **Generate both client and server contracts from their build's lock files.** Run `proto-contract check` against the proto, then `generate` alongside protobuf generation. Python, Go, Java, and .NET modules expose both client and server interceptors with no API or version arguments. Regenerate when that build's lock changes. Client and server builds may use different lock versions; neither should obtain its version from the other at runtime. Outputs use this repository's corresponding [runtime adapters](runtimes/); the TypeScript grpc-bridge client imports Connect directly. Keep each service's generated contract in its own module or package and register its matching interceptor.
 
@@ -162,15 +162,15 @@ Make `runtimes/python/proto_contract.py` importable alongside the generated modu
 ```python
 from concurrent import futures
 import grpc
-from echo_contract import ClientInterceptor, ServerInterceptor
+from echo_contract import ClientInterceptor, StrictServerInterceptor
 
 # Client: use this channel when constructing generated stubs.
 channel = grpc.intercept_channel(grpc.insecure_channel("localhost:50051"), ClientInterceptor())
 
-# Server: the interceptor runs before the generated service handler.
+# Server: install strict dispatch globally. Unknown registered services fail closed.
 server = grpc.server(
     futures.ThreadPoolExecutor(),
-    interceptors=(ServerInterceptor(),),
+    interceptors=(StrictServerInterceptor(),),
 )
 ```
 
@@ -186,6 +186,7 @@ import (
     "log"
 
     echocontract "github.com/dunkymole/proto-contract/gen/go/contracts/echo"
+    pb "github.com/dunkymole/proto-contract/gen/go/demo/v1"
     "google.golang.org/grpc"
     "google.golang.org/grpc/credentials/insecure"
 )
@@ -195,15 +196,21 @@ conn, err := grpc.NewClient(
     "localhost:50051",
     grpc.WithTransportCredentials(insecure.NewCredentials()),
     grpc.WithUnaryInterceptor(echocontract.ClientInterceptor()),
+    grpc.WithStreamInterceptor(echocontract.ClientStreamInterceptor()),
 )
 if err != nil {
     log.Fatal(err)
 }
 
-// Server: register generated services on server.
+// Server: strict dispatch must run globally and cover unary plus streams.
+strict, err := echocontract.StrictServer()
+if err != nil { log.Fatal(err) }
 server := grpc.NewServer(
-    grpc.UnaryInterceptor(echocontract.ServerInterceptor()),
+    grpc.ChainUnaryInterceptor(strict.Unary()),
+    grpc.ChainStreamInterceptor(strict.Stream()),
 )
+pb.RegisterEchoServiceServer(server, implementation)
+if err := strict.ValidateRegisteredServices(server); err != nil { log.Fatal(err) }
 ```
 
 In your own module, change the `echocontract` import to your generated package's path. The generated file still imports the reusable Proto Contract runtime.
@@ -221,7 +228,6 @@ Compile the generated `Contract.java` with the Java runtime adapter sources:
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.ServerBuilder;
-import io.grpc.ServerInterceptors;
 import protocontract.generated.echo.Contract;
 
 // Client: construct the generated stub from this channel.
@@ -230,11 +236,10 @@ ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
     .intercept(Contract.clientInterceptor())
     .build();
 
-// Server: EchoServiceImpl is the generated service implementation.
+// Server: install one strict dispatcher globally; do not wrap only selected services.
 io.grpc.Server server = ServerBuilder.forPort(50051)
-    .addService(ServerInterceptors.intercept(
-        new EchoServiceImpl(),
-        Contract.serverInterceptor()))
+    .addService(new EchoServiceImpl())
+    .intercept(Contract.strictServerInterceptor())
     .build();
 ```
 
@@ -256,9 +261,9 @@ using EchoContract = ProtoContract.Generated.Echo.Contract;
 using var channel = GrpcChannel.ForAddress("https://api.example.com");
 var invoker = channel.Intercept(EchoContract.ClientInterceptor());
 
-// ASP.NET Core server: EchoServiceImpl is the service implementation.
-builder.Services.AddGrpc().AddServiceOptions<EchoServiceImpl>(options =>
-    options.Interceptors.Add<EchoContract.ServerInterceptor>());
+// ASP.NET Core server: install fail-closed dispatch globally for every mapped service.
+builder.Services.AddSingleton(EchoContract.StrictServerInterceptor());
+builder.Services.AddGrpc(options => options.Interceptors.Add<ProtoContract.StrictServerInterceptor>());
 ```
 
 The demo source contains complete runnable services and clients. See [runtime integration](docs/RUNTIMES.md) for behavior and dependency details.
@@ -285,7 +290,7 @@ Proto Contract is independent of application release versions and authentication
 
 ## Project status
 
-This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The immediate roadmap is richer protobuf compatibility classification, all four streaming shapes, published language packages, and CI integrations.
+This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The roadmap includes published language packages and CI integrations.
 
 ## Contributing and security
 
