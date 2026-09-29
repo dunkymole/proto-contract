@@ -28,7 +28,7 @@ For the same API identifier, acceptance requires:
 client.major == server.major && client.minor <= server.minor
 ```
 
-For example, a client sends `x-proto-contract: demo.echo@2.0.0`. A server built at `2.0.0` accepts it, but rejects clients at `1.1.0` or `2.1.0`. Both sides get these values from generated code, not handwritten configuration.
+For example, a client sends `x-proto-contract: demo.echo@1.0.0`. A server built at `1.0.0` accepts it, but rejects clients at `1.1.0` or `2.0.0`. Both sides get these values from generated code, not handwritten configuration.
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ Create the first lock when introducing an API (the demo lock is already tracked)
 docker build -t proto-contract .
 docker run --rm -v "$PWD:/workspace" -w /workspace proto-contract snapshot \
   --proto proto/demo/v1/echo.proto --proto-path proto \
-  --service demo.v1.EchoService --api demo.echo --version 2.0.0 \
+  --service demo.v1.EchoService --api demo.echo --version 1.0.0 \
   --out contracts/demo.echo.json
 ```
 

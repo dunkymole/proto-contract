@@ -1,6 +1,9 @@
 package contract
 
 import (
+	"fmt"
+	"os"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -217,50 +220,15 @@ func TestBuildRejectsUnsupportedDescriptorFeatures(t *testing.T) {
 	}
 }
 
-func TestMigrateFormat1RequiresMatchingStructureAndMajorVersion(t *testing.T) {
-	defaultValue := "42"
-	current, err := Build(descriptorSet(&defaultValue, false, enumValue("ZERO", 0)), "test.S", "test", "1.2.3")
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacy := *current
-	legacy.Format = 1
-	legacy.Messages = append([]Message(nil), current.Messages...)
-	for i := range legacy.Messages {
-		legacy.Messages[i].Fields = append([]Field(nil), current.Messages[i].Fields...)
-		legacy.Messages[i].MapEntry = false
-		legacy.Messages[i].Syntax = ""
-		for j := range legacy.Messages[i].Fields {
-			legacy.Messages[i].Fields[j].HasDefault = false
-			legacy.Messages[i].Fields[j].DefaultValue = ""
-			legacy.Messages[i].Fields[j].JSONName = ""
+func TestReadRejectsUnsupportedLockFormats(t *testing.T) {
+	for _, format := range []int{1, 3, 99} {
+		path := t.TempDir() + "/lock.json"
+		contents := fmt.Sprintf(`{"format":%d}`, format)
+		if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+			t.Fatal(err)
 		}
-	}
-	legacy.Enums = append([]Enum(nil), current.Enums...)
-	for i := range legacy.Enums {
-		legacy.Enums[i].Values = append([]EnumValue(nil), current.Enums[i].Values...)
-		legacy.Enums[i].DefaultName = ""
-		legacy.Enums[i].Syntax = ""
-		for j := range legacy.Enums[i].Values {
-			legacy.Enums[i].Values[j].AliasOrder = 0
+		if _, err := Read(path); err == nil || !strings.Contains(err.Error(), "unsupported contract lock format") {
+			t.Fatalf("format %d error = %v", format, err)
 		}
-	}
-	legacy.Features = nil
-	migrated, err := MigrateFormat1(&legacy, current)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if migrated.Format != 2 || migrated.Version != "2.0.0" || !migrated.Messages[0].Fields[0].HasDefault {
-		t.Fatalf("bad migration: %+v", migrated)
-	}
-	if !current.Messages[0].Fields[0].HasDefault || current.Messages[0].Fields[0].DefaultValue != defaultValue {
-		t.Fatal("migration mutated the current descriptor snapshot")
-	}
-	if current.Enums[0].DefaultName != "ZERO" || current.Enums[0].Values[0].AliasOrder != 0 {
-		t.Fatal("migration mutated enum canonical-name metadata")
-	}
-	current.Messages[0].Fields[0].Name = "different"
-	if _, err := MigrateFormat1(&legacy, current); err == nil {
-		t.Fatal("migrated a structurally different descriptor")
 	}
 }

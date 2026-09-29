@@ -37,20 +37,20 @@ for (const [expected, target] of Object.entries(servers)) {
     assert.equal(generatedResponse.text, "hello");
     assert.equal(generatedResponse.serverLanguage, expected);
     // Explicit versions below are compatibility test fixtures, not application configuration.
-    for (const version of ["2.0.0", "2.0.1", "2.0.99"]) {
+    for (const version of ["1.0.0", "1.0.1", "1.0.99"]) {
       const response = await call(client("demo.echo", version));
       assert.equal(response.text, "hello");
       assert.equal(response.serverLanguage, expected);
     }
     // Independent generated clients share one connection, including concurrent calls.
-    const compatible = client("demo.echo", "2.0.0");
-    const newer = client("demo.echo", "2.1.0");
-    const wrongApi = client("wrong.api", "2.0.0");
+    const compatible = client("demo.echo", "1.0.0");
+    const newer = client("demo.echo", "1.1.0");
+    const wrongApi = client("wrong.api", "1.0.0");
     await Promise.all([
       call(compatible).then((response) => assert.equal(response.serverLanguage, expected)),
       rejected(newer),
       rejected(wrongApi),
-      rejected(client("demo.echo", "1.1.0")),
+      rejected(client("demo.echo", "2.0.0")),
       rejected(createClient(EchoService, connection.transport)),
     ]);
     assert.equal((await call(compatible)).text, "hello");

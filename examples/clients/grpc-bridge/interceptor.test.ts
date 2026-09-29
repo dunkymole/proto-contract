@@ -66,7 +66,7 @@ for (const stream of [false, true]) {
 
 test("server errors propagate unchanged", async () => {
   const error = new Error("rejected by server");
-  const invoke = contractClientInterceptor("demo.echo", "2.0.0")(async () => { throw error; });
+  const invoke = contractClientInterceptor("demo.echo", "1.0.0")(async () => { throw error; });
   await assert.rejects(invoke({
     stream: false,
     method: EchoService.method.echo,
