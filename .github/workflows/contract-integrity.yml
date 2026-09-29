@@ -1,0 +1,57 @@
+name: Contract integrity
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-integrity-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate contract and release history
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out proposed revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Test compiler and validator
+        run: go test ./...
+
+      - name: Check proto against proposed lock
+        run: go run ./cmd/proto-contract check --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --lock contracts/demo.echo.json
+
+      - name: Validate release against trusted base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          set -euo pipefail
+          git show "${BASE_SHA}:contracts/demo.echo.json" > "$RUNNER_TEMP/base-demo.echo.json"
+          base_args=()
+          if git cat-file -e "${BASE_SHA}:contracts/releases.json" 2>/dev/null; then
+            git show "${BASE_SHA}:contracts/releases.json" > "$RUNNER_TEMP/base-releases.json"
+            base_args=(--base-history "$RUNNER_TEMP/base-releases.json")
+          fi
+          go run ./cmd/proto-contract release-check \
+            --base-lock "$RUNNER_TEMP/base-demo.echo.json" \
+            --lock contracts/demo.echo.json \
+            "${base_args[@]}" \
+            --history contracts/releases.json
