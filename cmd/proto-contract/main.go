@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -192,8 +193,12 @@ func snapshot(args []string) error {
 func check(args []string) error {
 	fs, proto, path, service, protoc := common("check", args)
 	lock := fs.String("lock", "", "checked-in contract lock")
+	format := fs.String("format", "text", "report format: text or json")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *format != "text" && *format != "json" {
+		return fmt.Errorf("unsupported check report format %q (expected text or json)", *format)
 	}
 	if *proto == "" || *service == "" || *lock == "" {
 		return fmt.Errorf("--proto, --service and --lock are required")
@@ -207,15 +212,52 @@ func check(args []string) error {
 		return err
 	}
 	bump, changes := contract.Compare(old, current)
+	next := old.Version
+	if bump != contract.None {
+		next, err = contract.NextVersion(old.Version, bump)
+		if err != nil {
+			return fmt.Errorf("cannot calculate next contract version: %w", err)
+		}
+	}
+	if *format == "json" {
+		report := contractCheckReport{
+			API: old.API, Status: "unchanged", Version: old.Version,
+			NextVersion: next, Bump: bump.String(), Changes: changes,
+		}
+		if bump != contract.None {
+			report.Status = "changed"
+		}
+		encoded, err := encodeCheckReport(report)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(encoded))
+	}
 	if bump == contract.None {
-		fmt.Printf("%s %s: unchanged\n", old.API, old.Version)
+		if *format == "text" {
+			fmt.Printf("%s %s: unchanged\n", old.API, old.Version)
+		}
 		return nil
 	}
-	next, _ := contract.NextVersion(old.Version, bump)
-	for _, c := range changes {
-		fmt.Println(c)
+	if *format == "text" {
+		for _, c := range changes {
+			fmt.Println(c)
+		}
 	}
 	return fmt.Errorf("contract changed; minimum bump is %s (%s -> %s)", bump, old.Version, next)
+}
+
+type contractCheckReport struct {
+	API         string   `json:"api"`
+	Status      string   `json:"status"`
+	Version     string   `json:"version"`
+	NextVersion string   `json:"next_version"`
+	Bump        string   `json:"bump"`
+	Changes     []string `json:"changes"`
+}
+
+func encodeCheckReport(report contractCheckReport) ([]byte, error) {
+	return json.Marshal(report)
 }
 
 func version(args []string) error {

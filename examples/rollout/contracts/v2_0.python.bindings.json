@@ -1,0 +1,1 @@
+{"bindings":[{"service":"demo.v1.EchoService","lock":"v2_0.lock.json","output":"echo_contract.py"}]}

@@ -1,0 +1,61 @@
+{
+  "format": 2,
+  "api": "rollout.echo",
+  "version": "1.0.0",
+  "digest": "sha256:b3ca52286bad567287c848b141f9d1c083f85e3de18d98a77ce416ec072bf4dc",
+  "service": {
+    "name": "demo.v1.EchoService",
+    "methods": [
+      {
+        "name": "Echo",
+        "input": "demo.v1.EchoRequest",
+        "output": "demo.v1.EchoResponse",
+        "client_streaming": false,
+        "server_streaming": false
+      }
+    ]
+  },
+  "messages": [
+    {
+      "name": "demo.v1.EchoRequest",
+      "syntax": "proto3",
+      "fields": [
+        {
+          "number": 1,
+          "name": "text",
+          "type": "TYPE_STRING",
+          "json_name": "text",
+          "label": "LABEL_OPTIONAL"
+        },
+        {
+          "number": 2,
+          "name": "request_id",
+          "type": "TYPE_STRING",
+          "json_name": "requestId",
+          "label": "LABEL_OPTIONAL"
+        }
+      ]
+    },
+    {
+      "name": "demo.v1.EchoResponse",
+      "syntax": "proto3",
+      "fields": [
+        {
+          "number": 1,
+          "name": "text",
+          "type": "TYPE_STRING",
+          "json_name": "text",
+          "label": "LABEL_OPTIONAL"
+        },
+        {
+          "number": 2,
+          "name": "server_language",
+          "type": "TYPE_STRING",
+          "json_name": "serverLanguage",
+          "label": "LABEL_OPTIONAL"
+        }
+      ]
+    }
+  ],
+  "enums": []
+}

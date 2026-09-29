@@ -5,7 +5,8 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test": "tsx --test interceptor.test.ts",
-    "start": "tsx client.ts"
+    "start": "tsx client.ts",
+    "rollout": "tsx rollout/client.ts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.15.0",

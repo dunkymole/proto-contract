@@ -2,7 +2,7 @@
 FROM alpine:3.22 AS source
 RUN apk add --no-cache git
 ARG GRPC_BRIDGE_REPOSITORY=https://github.com/dunkymole/grpc-bridge.git
-ARG GRPC_BRIDGE_REF=80ecc2143dd335c6847e24a32ad510d491f6ea24
+ARG GRPC_BRIDGE_REF=200f417ce5b070d2c6e5214870a2b0887fa9058f
 RUN git init /bridge && cd /bridge && \
     git remote add origin "$GRPC_BRIDGE_REPOSITORY" && \
     git fetch --depth 1 origin "$GRPC_BRIDGE_REF" && git checkout --detach FETCH_HEAD
@@ -16,6 +16,7 @@ RUN CGO_ENABLED=0 go build -trimpath -o /bridge ./cmd/bridge
 FROM scratch AS bridge
 COPY --from=bridge-build /bridge /bridge
 COPY examples/clients/grpc-bridge/targets.json /config/targets.json
+COPY examples/rollout/targets.json /config/rollout-targets.json
 USER 65532:65532
 ENV LISTEN=0.0.0.0:8080 UPSTREAM=go-server:50051 TARGETS_FILE=/config/targets.json
 ENTRYPOINT ["/bridge"]
@@ -35,16 +36,29 @@ RUN CGO_ENABLED=0 go build -o /proto-contract ./cmd/proto-contract && \
     CGO_ENABLED=0 go build -o /protoc-gen-proto-contract ./cmd/protoc-gen-proto-contract
 
 FROM node:24-alpine AS client
-RUN apk add --no-cache protobuf
+RUN apk add --no-cache bash protobuf jq
 WORKDIR /app
 COPY --from=package /tmp/dunkymole-grpc-bridge-*.tgz ./grpc-bridge.tgz
+COPY --from=package /bridge/web/package.json ./grpc-bridge-package.json
+COPY examples/clients/grpc-bridge/verify-bridge-lock.mjs examples/clients/grpc-bridge/verify-bridge-lock.test.mjs ./
 COPY examples/clients/grpc-bridge/package*.json ./
-RUN npm ci --no-audit --no-fund
+# The source tree is fetched at an explicit commit, which can differ from the
+# checked-in default package tarball. Bind npm's local-file integrity to the
+# exact source artifact that this build just packed before verifying all other
+# dependencies with npm ci.
+RUN node --test ./verify-bridge-lock.test.mjs && \
+    node ./verify-bridge-lock.mjs && \
+    npm ci --no-audit --no-fund
 COPY examples/clients/grpc-bridge/*.ts examples/clients/grpc-bridge/tsconfig.json ./
 COPY runtimes/typescript ./runtime
 COPY proto /proto
 COPY contracts/demo.echo.json /contracts/demo.echo.json
 COPY contracts/typescript-bindings.json contracts/demo.echo.json ./contracts/
+COPY tests/strict-package ./tests/strict-package
+COPY examples/rollout /app/rollout
+COPY scripts/check-rollout-versions.sh /app/rollout/check-rollout-versions.sh
+COPY scripts/ci-contract-check.sh /app/scripts/ci-contract-check.sh
+COPY scripts/test-ci-contract-check.sh /app/scripts/test-ci-contract-check.sh
 COPY --from=contract-build /proto-contract /usr/local/bin/proto-contract
 COPY --from=contract-build /protoc-gen-proto-contract /usr/local/bin/protoc-gen-proto-contract
 RUN mkdir -p gen contracts && protoc -I /proto \
@@ -56,5 +70,8 @@ RUN mkdir -p gen contracts && protoc -I /proto \
     demo/v1/echo.proto && \
     proto-contract check --proto /proto/demo/v1/echo.proto --proto-path /proto \
     --service demo.v1.EchoService --lock contracts/demo.echo.json && \
-    npm run check && npm test
+    sh rollout/generate-clients.sh && \
+    sh rollout/check-rollout-versions.sh /app && \
+    bash scripts/test-ci-contract-check.sh && \
+    npm run check && npm test && NODE_MODULES=/app/node_modules sh tests/strict-package/run.sh
 CMD ["npm", "start"]

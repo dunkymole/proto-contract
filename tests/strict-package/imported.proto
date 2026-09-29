@@ -1,0 +1,5 @@
+syntax = "proto3";
+package review.imported;
+message Leaf {
+  optional string note = 1;
+}

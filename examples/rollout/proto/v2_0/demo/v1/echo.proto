@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package demo.v1;
+
+// This is an intentional major-version schema: text changes from string to
+// bytes and the v1 streaming methods are removed. Route it to a separate
+// endpoint rather than sending it to v1 replicas.
+service EchoService {
+  rpc Echo(EchoRequest) returns (EchoResponse);
+}
+
+message EchoRequest {
+  bytes text = 1;
+  string request_id = 2;
+}
+
+message EchoResponse {
+  bytes text = 1;
+  string server_language = 2;
+}

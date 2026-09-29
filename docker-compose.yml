@@ -4,11 +4,17 @@ services:
       context: .
       dockerfile: examples/clients/grpc-bridge/Dockerfile
       target: bridge
+      args:
+        GRPC_BRIDGE_REPOSITORY: ${GRPC_BRIDGE_REPOSITORY:-https://github.com/dunkymole/grpc-bridge.git}
+        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-200f417ce5b070d2c6e5214870a2b0887fa9058f}
   grpc-bridge-client:
     build:
       context: .
       dockerfile: examples/clients/grpc-bridge/Dockerfile
       target: client
+      args:
+        GRPC_BRIDGE_REPOSITORY: ${GRPC_BRIDGE_REPOSITORY:-https://github.com/dunkymole/grpc-bridge.git}
+        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-200f417ce5b070d2c6e5214870a2b0887fa9058f}
   dotnet-server:
     build:
       context: .
