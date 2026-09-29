@@ -21,13 +21,19 @@ func TestGenerateFromLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := filepath.Join(dir, "gen", "orders_contract.ts")
-	if err := generate([]string{"--lock", lock, "--lang", "typescript", "--out", out}); err != nil {
+	out := filepath.Join(dir, "gen", "orders_contract.py")
+	if err := generate([]string{"--lock", lock, "--lang", "python", "--out", out}); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(out)
-	if err != nil || !strings.Contains(string(b), `version: "`+snapshot.Version+`"`) {
+	if err != nil || !strings.Contains(string(b), `VERSION = "`+snapshot.Version+`"`) {
 		t.Fatalf("invalid generated module: %s, %v", b, err)
+	}
+	if err := generate([]string{"--lock", lock, "--lang", "typescript", "--out", filepath.Join(dir, "unbound.ts")}); err == nil || !strings.Contains(err.Error(), "requires --proto") {
+		t.Fatalf("lock-only TypeScript generation was not rejected: %v", err)
+	}
+	if err := generate([]string{"--lock", lock, "--lang", "typescript", "--package", "example.generated", "--out", filepath.Join(dir, "invalid.ts")}); err == nil || !strings.Contains(err.Error(), "--package is only valid for native generation") {
+		t.Fatalf("TypeScript --package was not rejected: %v", err)
 	}
 	b, err = os.ReadFile(lock)
 	if err != nil || !bytes.Equal(b, contents) {

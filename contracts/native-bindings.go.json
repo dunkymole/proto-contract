@@ -1,0 +1,10 @@
+{
+  "bindings": [
+    {
+      "service": "demo.v1.EchoService",
+      "lock": "demo.echo.json",
+      "output": "generated/go/contract.go",
+      "package": "echocontract"
+    }
+  ]
+}

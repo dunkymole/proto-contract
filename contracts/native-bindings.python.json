@@ -1,0 +1,9 @@
+{
+  "bindings": [
+    {
+      "service": "demo.v1.EchoService",
+      "lock": "demo.echo.json",
+      "output": "generated/python/echo_contract.py"
+    }
+  ]
+}

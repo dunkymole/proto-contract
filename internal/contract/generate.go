@@ -20,10 +20,7 @@ func Generate(s *Snapshot, language, packageName string) ([]byte, error) {
 	api, version, service := quote(s.API), quote(s.Version), quote(s.Service.Name)
 	switch language {
 	case "typescript":
-		if packageName != "" {
-			return nil, fmt.Errorf("--package is not used for TypeScript")
-		}
-		return TypeScript(s)
+		return nil, fmt.Errorf("TypeScript generation requires validated descriptors; use TypeScriptBinding or protoc-gen-proto-contract")
 	case "python":
 		if packageName != "" {
 			return nil, fmt.Errorf("--package is not used for Python")
