@@ -1,0 +1,87 @@
+name: Contract integrity
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-integrity-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate contract and release history
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      COMPOSE_PROJECT_NAME: proto-contract-validation-${{ github.run_id }}-${{ github.run_attempt }}
+      GRPC_BRIDGE_REPOSITORY: https://github.com/dunkymole/grpc-bridge.git
+      GRPC_BRIDGE_REF: 87f0e1c86dcd53b64cd24948962ced5b3fc38f99
+    steps:
+      - name: Check out proposed revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: false
+
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler jq
+
+      - name: Test compiler and validator
+        run: go test ./...
+
+      - name: Vet compiler and validator
+        run: go vet ./...
+
+      - name: Build compiler for check report
+        run: go build -o "$RUNNER_TEMP/proto-contract" ./cmd/proto-contract
+
+      - name: Check proto and release against trusted base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          PROTO_CONTRACT_BIN: ${{ runner.temp }}/proto-contract
+        run: |
+          set -euo pipefail
+          git show "${BASE_SHA}:contracts/demo.echo.json" > "$RUNNER_TEMP/base-demo.echo.json"
+          base_args=()
+          if git cat-file -e "${BASE_SHA}:contracts/releases.json" 2>/dev/null; then
+            git show "${BASE_SHA}:contracts/releases.json" > "$RUNNER_TEMP/base-releases.json"
+            base_args=(--base-history "$RUNNER_TEMP/base-releases.json")
+          fi
+          scripts/ci-contract-check.sh \
+            --proto proto/demo/v1/echo.proto \
+            --proto-path proto \
+            --service demo.v1.EchoService \
+            --lock contracts/demo.echo.json \
+            --base-lock "$RUNNER_TEMP/base-demo.echo.json" \
+            "${base_args[@]}" \
+            --history contracts/releases.json
+
+      - name: Test CI contract-check report and failure handling
+        env:
+          PROTO_CONTRACT_BIN: ${{ runner.temp }}/proto-contract
+        run: bash scripts/test-ci-contract-check.sh
+
+      - name: Build and run the native interoperability matrix
+        run: pwsh ./scripts/test-all.ps1
+
+      - name: Run the versioned rollout scenario
+        run: pwsh ./scripts/test-rollout.ps1
+
+      - name: Record Compose diagnostics and clean the matrix project
+        if: always()
+        run: |
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" logs --no-color || true
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" down --remove-orphans || true
