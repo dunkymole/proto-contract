@@ -2,6 +2,8 @@
 
 All adapters use the ASCII gRPC metadata key `x-proto-contract` with value `<api>@<semver>`.
 
+Use the [compiler setup and build workflow](COMPILER.md) before the commands below. The Orders/Inventory names in this guide are illustrative application services: replace them with your own locks, generated protobuf types, and package paths. The repository's runnable API is `demo.v1.EchoService`, used in the [README](../README.md#runtime-adapters).
+
 ## Generate client and server contracts
 
 Each build's tracked lock is the source of its API identity and version, for both clients and servers. Run `check` against the proto and lock, then `generate` alongside protobuf binding generation. Regenerate after updating that build's lock. Outputs embed the version at build time; they do not query the other endpoint or negotiate a different version. Client and server builds may use different lock versions. Both sides use generated interceptors without supplying API/version strings.
@@ -24,6 +26,55 @@ proto-contract generate --lock contracts/orders.json --lang dotnet --package Con
 `--package` sets the Go/Java package or C# namespace. Defaults are `contractgen`, `protocontract.generated`, and `ProtoContract.Generated`, respectively. Java emits a public class named `Contract`, so use `Contract.java`. Generate a distinct module/package/namespace per service. Generated metadata constants are available for inspection; application setup uses the no-argument entry points. The outputs retain each runtime adapter's existing RPC support; generation does not add streaming support to unary-only runtimes.
 
 Register every served contract. Python's generated server interceptor and Go's generated unary server interceptor enforce only their generated service name; register one interceptor for each service (use `grpc.ChainUnaryInterceptor` in Go). Java attaches its generated interceptor with `ServerInterceptors.intercept` on the matching service. In .NET, use the generated server interceptor type with `AddServiceOptions<YourService>` so separate services get separate contract configurations. The generated wrappers own no server or channel lifecycle.
+
+An unrelated service is not protected by a Python/Go interceptor generated for another service. Register all of them explicitly. On clients, keep contract configuration scoped to the intended service: Java supports stub-level `withInterceptors`, .NET uses a service-specific call invoker, and grpc-bridge uses a separate transport wrapper. Python's intercepted channel and Go's connection interceptor attach their contract to every intercepted call; do not reuse those for a different service contract.
+
+## Dependencies and generated files
+
+The generated contract module is additional to ordinary protobuf bindings. Keep it in the source tree or generated-source path compiled by your application. Include both native runtime adapter sources when the module references both client and server types, even in a client-only application. TypeScript output is self-contained apart from Connect.
+
+The tested examples use these dependencies; see the linked build files for exact package versions and protobuf generation commands:
+
+| Runtime | Example setup |
+| --- | --- |
+| Python | Python 3.13, `grpcio` and `grpcio-tools`; [client requirements](../examples/clients/python/requirements.txt), [server build](../examples/servers/python/Dockerfile) |
+| Go | Go 1.24, gRPC-Go and Protobuf; [go.mod](../go.mod), [client build](../examples/clients/go/Dockerfile) |
+| Java | Java 21, Maven, gRPC-Java, Protobuf; [client POM](../examples/clients/java/pom.xml), [server POM](../examples/servers/java/pom.xml) |
+| .NET | .NET 9, `Grpc.Net.Client`/`Grpc.AspNetCore`, `Grpc.Tools`; [client project](../examples/clients/dotnet/ProtoContractClientDemo.csproj), [server project](../examples/servers/dotnet/ProtoContractServerDemo.csproj) |
+| TypeScript | Node.js 24 for the executable example, Connect 2.x, Protobuf-ES 2.x, and pinned grpc-bridge source; [package manifest](../examples/clients/grpc-bridge/package.json), [Docker build](../examples/clients/grpc-bridge/Dockerfile) |
+
+These are demonstrated configurations, not a compatibility promise for every language/runtime release. Python/Java/.NET runtime adapters are source files in this repository; do not assume they are published language packages. grpc-bridge's example package is built locally in Docker from its pinned source revision.
+
+## RPC coverage
+
+The 20-combination interoperability matrix tests unary calls only.
+
+| Adapter | Implemented interception |
+| --- | --- |
+| Python | Unary-unary client and server hooks |
+| Go | Unary client and server hooks |
+| .NET | Asynchronous unary client calls and unary server handlers; blocking client and streaming hooks are not implemented |
+| Java | Generic gRPC call interception; streaming behavior is not covered by this project's matrix |
+| TypeScript / grpc-bridge | Outgoing interceptor can run on all four shapes through `interceptTransport`; the matrix exercises unary calls and focused tests check stream handling |
+
+Do not infer streaming enforcement on a backend from TypeScript's transport support. Generation binds the lock values to existing runtime behavior; it does not implement additional RPC hooks.
+
+## Running the examples
+
+Run `./scripts/test-all.ps1` from the repository root in PowerShell for compiler lock checks, builds, all 20 combinations, and cleanup. Docker must run Linux containers. To run the clients manually in any shell:
+
+```sh
+docker compose build
+docker compose up -d go-server java-server dotnet-server python-server grpc-bridge
+docker compose run --rm -T python-client
+docker compose run --rm -T go-client
+docker compose run --rm -T java-client
+docker compose run --rm -T dotnet-client
+docker compose run --rm -T grpc-bridge-client
+docker compose down --remove-orphans
+```
+
+Stop and inspect a failing build/client command; run cleanup even after a failure. For server diagnostics use `docker compose logs go-server java-server dotnet-server python-server grpc-bridge`. Services are reachable through Compose DNS, not published host ports. Each native client checks the generated compatible contract and deliberately incompatible fixtures against all four servers; grpc-bridge adds older-minor, patch, wrong-API, missing-contract, and concurrent-client checks.
 
 ## TypeScript / grpc-bridge client
 
@@ -68,7 +119,7 @@ try {
 
 Use the same per-client wrapper with `openBridgeConnection` or `createBridgeConnection`. Contract configuration belongs to the generated service client, not a shared channel: create a separate wrapper for each API/version. Wrappers copy call headers and do not mutate the underlying transport or caller-owned headers. Close connections, release shared leases, and dispose shared handles when their owner shuts down.
 
-The adapter sets one contract value, replacing any existing value for that key while preserving other headers. It applies to unary and streaming requests without consuming or wrapping message streams. grpc-bridge preserves this request metadata through retries and connection replacement. Contract enforcement remains on the native gRPC server; the bridge forwards bytes without interpreting the contract. The current demo and server adapters validate unary RPCs only.
+The adapter sets one contract value, replacing any existing value for that key while preserving other headers. It applies to unary and streaming requests without consuming or wrapping message streams. grpc-bridge preserves this request metadata through retries and connection replacement. Contract enforcement remains on the native gRPC server; the bridge forwards bytes without interpreting the contract. End-to-end validation in this project covers unary RPCs; backend hooks differ as described in [RPC coverage](#rpc-coverage).
 
 The generated `contractInterceptor` is a standard Connect `Interceptor` and rejects use with a different service. Apply it per client using grpc-bridge's public `interceptTransport()`; do not register a fixed contract on the shared connection. No custom transport implementation or private bridge imports are needed. `baseUrl` identifies the logical backend to interceptors and does not change routing or open another connection.
 
@@ -111,6 +162,8 @@ server := grpc.NewServer(
 ```
 
 ## Go client
+
+Import `orderscontract` from the module path where you generated `gen/orderscontract/contract.go`. Supply your normal transport credentials and close the connection when the client shuts down.
 
 ```go
 connection, _ := grpc.NewClient(target,

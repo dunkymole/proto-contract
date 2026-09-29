@@ -10,7 +10,7 @@ The rule is intentionally simple:
 client.major == server.major && client.minor <= server.minor
 ```
 
-Patch releases do not change schema compatibility. A client sends `x-proto-contract: demo.echo@1.0.0` on every RPC. A server at `1.1.0` accepts it, but rejects clients at `1.2.0` or `2.0.0` with `FAILED_PRECONDITION`.
+Patch releases do not change schema compatibility. For example, a generated client sends `x-proto-contract: demo.echo@1.0.0`. A server built with the same API's lock at `1.1.0` accepts it, but rejects clients at `1.2.0` or `2.0.0` with `FAILED_PRECONDITION`. The complete runtime matrix currently covers unary RPCs; see [runtime coverage](docs/RUNTIMES.md#rpc-coverage).
 
 ## Why
 
@@ -20,20 +20,24 @@ Protobuf's wire format is designed for evolution, but an application often needs
 flowchart LR
   P[Service proto] --> C[Proto Contract compiler]
   C --> L[Tracked contract lock]
-  L --> B[Build version]
+  L --> B[Generated client interceptor]
+  L --> G[Generated server interceptor]
   B --> I[Client metadata]
-  I --> S{Server adapter}
+  G --> S{Compatibility check}
+  I --> S
   S -->|compatible| A[Application handler]
   S -->|incompatible| F[FAILED_PRECONDITION]
 ```
 
 ## Try the complete demo
 
-You need Docker with Compose. The demonstration builds clients and servers in Python, Java, .NET, and Go, plus a TypeScript client using grpc-bridge. It exercises all five clients against all four servers: 20 combinations, each with accepted and rejected contract versions. Docker builds the bridge and its TypeScript package from a pinned source revision, so no published npm release or local Node.js installation is required.
+You need Docker with Compose v2, Linux container support, and PowerShell to run the script below from the repository root. Builds download images and dependencies. The demonstration builds clients and servers in Python, Java, .NET, and Go, plus a TypeScript client using grpc-bridge. It exercises all five clients against all four servers: 20 combinations, each with accepted and rejected contract versions. Docker builds the bridge and its TypeScript package from a pinned source revision, so no local language toolchains are needed.
 
 ```powershell
 ./scripts/test-all.ps1
 ```
+
+The script removes its Compose containers and network when finished. For individual runs or a shell-only workflow, see [running examples](docs/RUNTIMES.md#running-the-examples).
 
 Expected result:
 
@@ -48,7 +52,9 @@ All 20 client/server combinations passed (including TypeScript via grpc-bridge)
 
 ## Compiler workflow
 
-Create the first lock:
+Run these Bash examples from the repository root. See the [compiler reference](docs/COMPILER.md) for local installation, PowerShell equivalents, command options, and a build sequence.
+
+Create the first lock when introducing an API (the demo lock is already tracked):
 
 ```bash
 docker build -t proto-contract .
@@ -66,7 +72,7 @@ docker run --rm -v "$PWD:/workspace" -w /workspace proto-contract check \
   --service demo.v1.EchoService --lock contracts/demo.echo.json
 ```
 
-When the schema changes, `check` reports `none`, `minor`, or `major` and the required next version. Update the lock with the calculated minimum:
+`check` prints `unchanged` and exits successfully when the compared contract fields match. For a schema change, it exits nonzero and reports the minimum bump and required next version. After reviewing an intentional change, update the lock with the calculated minimum:
 
 ```bash
 docker run --rm -v "$PWD:/workspace" -w /workspace proto-contract update \
@@ -76,13 +82,17 @@ docker run --rm -v "$PWD:/workspace" -w /workspace proto-contract update \
 
 The compiler applies the calculated minimum automatically. You may pass `--bump minor` or `--bump major` to choose a higher bump when a semantic behavior change is invisible in descriptors. It refuses an explicit bump below the structural minimum. `version --lock contracts/demo.echo.json` prints only the version for build scripts.
 
+Commit the reviewed lock, then generate each application's contract module from that lock as part of its build. `generate` does not inspect `.proto` files or update a lock: run `check` first. It is separate from the usual protobuf message/service code generator. Do not use `snapshot` to replace an existing lock when checking a change; that would discard the baseline used for comparison.
+
 ## Runtime adapters
 
-Python, Go, Java, and .NET have client interceptors that attach the contract to every call and native server interceptors that reject incompatible calls before application logic runs.
+Python, Go, Java, and .NET have client interceptors that attach contract metadata and native server interceptors that reject incompatible calls before application logic runs, for their [supported RPC shapes](docs/RUNTIMES.md#rpc-coverage).
 
 **Generate both client and server contracts from their build's lock files.** Run `proto-contract check` against the proto, then `generate` alongside protobuf generation. Python, Go, Java, and .NET modules expose both client and server interceptors with no API or version arguments. Regenerate when that build's lock changes. Client and server builds may use different lock versions; neither should obtain its version from the other at runtime. Outputs use this repository's corresponding [runtime adapters](runtimes/); the TypeScript grpc-bridge client imports Connect directly. Keep each service's generated contract in its own module or package and register its matching interceptor.
 
 The client and server snippets below represent separate applications, each using code generated from its own lock. All Docker example builds check the lock and generate their adapters before compilation.
+
+The commands below assume `proto-contract` is installed on your `PATH`, or defined as the [Docker wrapper](docs/COMPILER.md#docker-wrapper). Code snippets show integration points, not complete applications; runnable clients and servers are under `examples/`.
 
 ### TypeScript / grpc-bridge
 
@@ -179,6 +189,8 @@ server := grpc.NewServer(
 )
 ```
 
+In your own module, change the `echocontract` import to your generated package's path. The generated file still imports the reusable Proto Contract runtime.
+
 ### Java
 
 ```sh
@@ -237,12 +249,13 @@ The demo source contains complete runnable services and clients. See [runtime in
 ## Repository layout
 
 ```text
-compiler/            schema snapshot and compatibility classifier
+cmd/proto-contract/  compiler CLI
+internal/contract/   schema snapshots, compatibility classifier, code generation
 contracts/           tracked contract locks
 proto/               example protobuf API
-gen/                  shared checked-in generated bindings
+gen/                 checked-in Go protobuf bindings and generated demo contract
 runtimes/<language>/  reusable client and server interceptors
-examples/clients/     runnable clients, one directory per language
+examples/clients/     native clients and the TypeScript grpc-bridge client
 examples/servers/     runnable servers, one directory per language
 scripts/              build and interoperability checks
 ```
