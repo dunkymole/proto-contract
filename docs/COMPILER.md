@@ -48,7 +48,7 @@ Create one lock per service. `--service` is the fully qualified protobuf service
 proto-contract snapshot --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --api demo.echo --version 1.0.0 --out contracts/demo.echo.json
 ```
 
-This creates parent directories and writes the output file, replacing it if present. The demo already has a lock; use it for checks rather than recreating it.
+This creates parent directories and writes the output file. It refuses to replace an existing path; pass `--force` only when you deliberately want to replace it. The demo already has a lock; use it for checks rather than recreating it.
 
 On a proposed schema change, compare it with the tracked baseline:
 
@@ -63,6 +63,16 @@ proto-contract update --proto proto/demo/v1/echo.proto --proto-path proto --serv
 ```
 
 `update` applies the calculated minimum bump. `--bump minor` or `--bump major` can raise it for a behavioral change the schema cannot describe. `--bump none` is accepted only when no structural bump is required. Automatic updates leave the version unchanged when no compared fields changed. A minor bump resets patch to zero; a major bump resets minor and patch to zero. There is no automatic patch bump or `--bump patch` option.
+
+Before merging a proposed lock, compare it with the lock and release manifest from the trusted base revision:
+
+```sh
+proto-contract release-check --base-lock /tmp/base/demo.echo.json --lock contracts/demo.echo.json --base-history /tmp/base/releases.json --history contracts/releases.json
+```
+
+The manifest records each released API, semantic version, and schema digest. It is append-only: a new version appends exactly one assignment, and an existing assignment can never point at another digest. On the initial bootstrap, when the trusted base has no manifest, the proposed history must seed the exact base-lock assignment before adding a release. A future release-integrity CI job should run this check from the pull-request base and check that the proto still matches the proposed lock.
+
+`contracts/releases.json` is a version-controlled record, not immutable authority by itself. Protect `main` against force-pushes and direct unreviewed writes, require the lock-integrity status check, and serialize release merges with a merge queue or revalidation after each merge. The validator models one strictly increasing release line per API; after publishing a newer major, it does not accept later patches to the older major from the same history. Use a separate protected maintenance history or a distinct API identity for independently maintained lines.
 
 ## Generate during each build
 
@@ -93,9 +103,10 @@ Snapshots use lock format 2, the sole format supported by this pre-release. Form
 
 | Command | Required flags | Other flags |
 | --- | --- | --- |
-| `snapshot` | `--proto`, `--service`, `--api`, `--version`, `--out` | `--proto-path` (default `.`), `--protoc` (default `protoc`) |
+| `snapshot` | `--proto`, `--service`, `--api`, `--version`, `--out` | `--proto-path` (default `.`), `--protoc` (default `protoc`), `--force` |
 | `check` | `--proto`, `--service`, `--lock` | `--proto-path`, `--protoc` |
 | `update` | `--proto`, `--service`, `--lock` | `--proto-path`, `--protoc`, `--bump` (default `auto`) |
+| `release-check` | `--base-lock`, `--lock`, `--history` | `--base-history` (absent only for bootstrap) |
 | `generate` | `--lock`, `--out` | `--lang` (default `typescript`), `--package` |
 | `version` | `--lock` | None; prints only the stored version |
 

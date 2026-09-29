@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "releases": [
+    {
+      "api": "demo.echo",
+      "version": "1.1.0",
+      "digest": "sha256:cbbe2df4e35b267aae752b13db6d9297d5306c98b4085d19ea71fdce3f451aa3"
+    }
+  ]
+}

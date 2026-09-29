@@ -177,8 +177,7 @@ func validateGeneration(s *Snapshot) error {
 			return fmt.Errorf("version components must be between 0 and 2147483647")
 		}
 	}
-	_, err := NextVersion(s.Version, None)
-	return err
+	return Validate(s)
 }
 
 func validatePackage(name, language string) error {

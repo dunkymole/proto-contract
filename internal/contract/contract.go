@@ -123,7 +123,7 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 		return nil, fmt.Errorf("service %q not found", serviceName)
 	}
 	usedFiles := map[*descriptorpb.FileDescriptorProto]bool{idx.files[serviceName]: true}
-	s := &Snapshot{Format: 2, API: api, Version: version, Service: Service{Name: serviceName}, Messages: []Message{}, Enums: []Enum{}}
+	s := &Snapshot{Format: 2, API: api, Version: version, Service: Service{Name: serviceName, Methods: []Method{}}, Messages: []Message{}, Enums: []Enum{}}
 	addFeature := func(name string, message proto.Message) error {
 		if message == nil {
 			return nil
@@ -192,7 +192,7 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 		}); err != nil {
 			return nil, err
 		}
-		m := Message{Name: name, MapEntry: md.GetOptions().GetMapEntry(), Syntax: descriptorSyntax(idx.files[name])}
+		m := Message{Name: name, MapEntry: md.GetOptions().GetMapEntry(), Syntax: descriptorSyntax(idx.files[name]), Fields: []Field{}}
 		if err := addFeature("message-options:"+name, md.GetOptions()); err != nil {
 			return nil, err
 		}
@@ -242,7 +242,7 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 		if err := validateEnumSemantics(ed); err != nil {
 			return nil, err
 		}
-		e := Enum{Name: name, Syntax: descriptorSyntax(idx.files[name])}
+		e := Enum{Name: name, Syntax: descriptorSyntax(idx.files[name]), Values: []EnumValue{}}
 		if len(ed.Value) > 0 {
 			e.DefaultName = ed.Value[0].GetName()
 		}
@@ -301,6 +301,9 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 		return nil, err
 	}
 	s.Digest = digest
+	if err := Validate(s); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 
@@ -374,11 +377,8 @@ func calculateDigest(s *Snapshot) (string, error) {
 	return "sha256:" + hex.EncodeToString(h[:]), nil
 }
 func Write(path string, s *Snapshot) error {
-	if s == nil || s.Format != 2 {
-		if s == nil {
-			return fmt.Errorf("cannot write an empty contract lock")
-		}
-		return fmt.Errorf("unsupported contract lock format %d; this pre-release supports format 2 only", s.Format)
+	if err := Validate(s); err != nil {
+		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
@@ -388,19 +388,25 @@ func Write(path string, s *Snapshot) error {
 		return e
 	}
 	b = append(b, '\n')
+	if len(b) > MaxLockBytes {
+		return fmt.Errorf("lock exceeds maximum size of %d bytes", MaxLockBytes)
+	}
 	return os.WriteFile(path, b, 0644)
 }
 func Read(path string) (*Snapshot, error) {
-	b, e := os.ReadFile(path)
+	b, e := readBoundedFile(path)
 	if e != nil {
 		return nil, e
 	}
+	if len(b) > MaxLockBytes {
+		return nil, fmt.Errorf("lock exceeds maximum size of %d bytes", MaxLockBytes)
+	}
 	s := new(Snapshot)
-	if e = json.Unmarshal(b, s); e != nil {
+	if e = decodeStrictJSON(b, s); e != nil {
 		return nil, e
 	}
-	if s.Format != 2 {
-		return nil, fmt.Errorf("unsupported contract lock format %d; this pre-release supports format 2 only", s.Format)
+	if err := Validate(s); err != nil {
+		return nil, fmt.Errorf("invalid lock %q: %w", path, err)
 	}
 	return s, nil
 }
@@ -697,6 +703,12 @@ func compareNamed[T any](a, b []T, key func(T) string, equal func(T, T) bool, la
 	}
 }
 func NextVersion(v string, b Bump) (string, error) {
+	if !canonicalNumber.MatchString(v) {
+		return "", fmt.Errorf("version must be canonical MAJOR.MINOR.PATCH")
+	}
+	if b != None && b != Minor && b != Major {
+		return "", fmt.Errorf("invalid semantic version bump")
+	}
 	p := strings.Split(v, ".")
 	if len(p) != 3 {
 		return "", fmt.Errorf("version must be MAJOR.MINOR.PATCH")
