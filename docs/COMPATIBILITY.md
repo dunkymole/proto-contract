@@ -21,7 +21,8 @@ Generated metadata uses numeric `MAJOR.MINOR.PATCH`. Handwritten noncanonical ve
 | Change the selected service name | major |
 | Add a method | minor |
 | Add a field with a new number | minor |
-| Add an enum value not used by a required enum field | minor |
+| Add an enum value with a new number, unless used by a required enum field | minor |
+| Add an alias for an existing enum number | major |
 | Add an enum value to an enum used by a required field | major |
 | Add a required field | major |
 | Remove or rename a method | major |
