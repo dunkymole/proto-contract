@@ -4,16 +4,9 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 ## Unreleased
 
-- Generate server interceptors alongside client interceptors for Python, Go, Java, and .NET; all server examples and documentation use generated configuration from their build's lock.
-
-- Generate lock-bound Python, Go, Java, and .NET client interceptors; all README client examples and matrix success paths use generated contracts.
-
-- Generate service-specific TypeScript contract interceptors from lock files with `proto-contract generate`; application examples import generated versions.
-
-- TypeScript contract interceptor for grpc-bridge and a real bridge client in the expanded 5-by-4 interoperability matrix.
-
 - Initial contract compiler with deterministic reachable-graph locks.
-- Automatic none, minor, and major change classification.
-- Python client interceptor and Go, Java, and .NET server adapters.
-- Containerized cross-language compatibility demonstration.
-- Client and server adapters across Python, Java, .NET, and Go, with a 4-by-4 interoperability matrix.
+- Automatic none, minor, and major change classification and deliberate lock updates.
+- Generated client and server interceptors for Python, Go, Java, and .NET, bound to each build's lock.
+- Generated TypeScript client interceptors using grpc-bridge's public per-client transport wrapper.
+- Containerized interoperability matrix with five clients and four servers: 20 combinations, including real grpc-bridge traffic.
+- Compiler setup/reference, build workflow, generated runtime integration, and coverage documentation.
