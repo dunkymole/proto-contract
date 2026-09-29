@@ -1,17 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dunkymole/proto-contract/internal/contract"
 )
 
 func TestGenerateFromLock(t *testing.T) {
 	dir := t.TempDir()
-	lock := filepath.Join(dir, "contract.json")
-	contents := `{"format":2,"api":"example.orders","version":"2.3.0","service":{"name":"example.v1.Orders"}}`
-	if err := os.WriteFile(lock, []byte(contents), 0644); err != nil {
+	lock := filepath.Join("..", "..", "contracts", "demo.echo.json")
+	snapshot, err := contract.Read(lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contents, err := os.ReadFile(lock)
+	if err != nil {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "gen", "orders_contract.ts")
@@ -19,11 +26,11 @@ func TestGenerateFromLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(out)
-	if err != nil || !strings.Contains(string(b), `version: "2.3.0"`) {
+	if err != nil || !strings.Contains(string(b), `version: "`+snapshot.Version+`"`) {
 		t.Fatalf("invalid generated module: %s, %v", b, err)
 	}
 	b, err = os.ReadFile(lock)
-	if err != nil || string(b) != contents {
+	if err != nil || !bytes.Equal(b, contents) {
 		t.Fatal("generation changed the input lock")
 	}
 	if err := generate([]string{"--lock", lock, "--out", lock}); err == nil {
@@ -39,6 +46,22 @@ func TestGenerateRequiresSupportedOptions(t *testing.T) {
 		if err := generate(args); err == nil {
 			t.Fatalf("accepted invalid arguments: %v", args)
 		}
+	}
+}
+
+func TestSnapshotRefusesOverwriteUnlessForced(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "existing.json")
+	if err := os.WriteFile(path, []byte("keep me"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"--proto", "missing.proto", "--service", "test.Service", "--api", "test", "--version", "1.0.0", "--out", path}
+	err := snapshot(args)
+	if err == nil || !strings.Contains(err.Error(), "pass --force") {
+		t.Fatalf("snapshot overwrite error = %v", err)
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil || string(contents) != "keep me" {
+		t.Fatal("snapshot overwrite refusal changed existing file")
 	}
 }
 

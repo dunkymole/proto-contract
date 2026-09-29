@@ -7,7 +7,9 @@ import (
 )
 
 func TestTypeScriptUsesLock(t *testing.T) {
-	s := &Snapshot{Format: 2, API: "example.orders", Version: "2.3.4", Service: Service{Name: "example.v1.Orders"}}
+	s := generationFixture(t)
+	s.API = "example.orders"
+	s.Digest, _ = calculateDigest(s)
 	first, err := TypeScript(s)
 	if err != nil {
 		t.Fatal(err)

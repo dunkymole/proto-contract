@@ -10,7 +10,7 @@ import (
 func TestGenerateClientLanguages(t *testing.T) {
 	for _, language := range []string{"typescript", "python", "go", "java", "dotnet"} {
 		t.Run(language, func(t *testing.T) {
-			s := &Snapshot{Format: 2, API: "example/orders:v1", Version: "2.3.4", Service: Service{Name: "example.v1.Orders"}}
+			s := generationFixture(t)
 			first, err := Generate(s, language, "")
 			if err != nil {
 				t.Fatal(err)
@@ -44,7 +44,9 @@ func TestGenerateClientLanguages(t *testing.T) {
 }
 
 func TestGeneratePackageValidation(t *testing.T) {
-	s := &Snapshot{Format: 2, API: "api", Version: "1.0.0", Service: Service{Name: "Service"}}
+	s := generationFixture(t)
+	s.API = "api"
+	s.Digest, _ = calculateDigest(s)
 	for _, language := range []string{"go", "java", "dotnet"} {
 		for _, name := range []string{"package", "_", "bad-name", "a;evil", "a..b"} {
 			if _, err := Generate(s, language, name); err == nil {
@@ -68,6 +70,20 @@ func TestGeneratePackageValidation(t *testing.T) {
 	if _, err := Generate(s, "ruby", ""); err == nil {
 		t.Fatal("accepted unsupported language")
 	}
+}
+
+func generationFixture(t *testing.T) *Snapshot {
+	t.Helper()
+	s := &Snapshot{Format: 2, API: "example/orders:v1", Version: "2.3.4", Service: Service{Name: "example.v1.Orders", Methods: []Method{{Name: "List", Input: "example.v1.Request", Output: "example.v1.Response"}}}, Messages: []Message{{Name: "example.v1.Request", Syntax: "proto3", Fields: []Field{}}, {Name: "example.v1.Response", Syntax: "proto3", Fields: []Field{}}}, Enums: []Enum{}}
+	var err error
+	s.Digest, err = calculateDigest(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(s); err != nil {
+		t.Fatal(err)
+	}
+	return s
 }
 
 func TestCheckedInGoContractMatchesLock(t *testing.T) {

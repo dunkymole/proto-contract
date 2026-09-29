@@ -21,6 +21,8 @@ func main() {
 		err = check(os.Args[2:])
 	case "update":
 		err = update(os.Args[2:])
+	case "release-check":
+		err = releaseCheck(os.Args[2:])
 	case "version":
 		err = version(os.Args[2:])
 	case "generate":
@@ -35,7 +37,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: proto-contract <snapshot|check|update|version|generate> [options]")
+	fmt.Fprintln(os.Stderr, "usage: proto-contract <snapshot|check|update|release-check|version|generate> [options]")
 	os.Exit(2)
 }
 
@@ -134,11 +136,17 @@ func snapshot(args []string) error {
 	api := fs.String("api", "", "stable API identifier")
 	ver := fs.String("version", "", "contract version")
 	out := fs.String("out", "", "output lock file")
+	force := fs.Bool("force", false, "replace an existing lock file")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *proto == "" || *service == "" || *api == "" || *ver == "" || *out == "" {
 		return fmt.Errorf("--proto, --service, --api, --version and --out are required")
+	}
+	if _, err := os.Lstat(*out); err == nil && !*force {
+		return fmt.Errorf("output %q already exists; pass --force to replace it", *out)
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
 	}
 	s, err := contract.Compile(*protoc, *path, *proto, *service, *api, *ver)
 	if err != nil {
@@ -191,5 +199,47 @@ func version(args []string) error {
 		return err
 	}
 	fmt.Println(s.Version)
+	return nil
+}
+
+func releaseCheck(args []string) error {
+	fs := flag.NewFlagSet("release-check", flag.ContinueOnError)
+	basePath := fs.String("base-lock", "", "trusted base lock")
+	lockPath := fs.String("lock", "", "proposed lock")
+	baseHistoryPath := fs.String("base-history", "", "trusted base release manifest (may be absent only during bootstrap)")
+	historyPath := fs.String("history", "", "proposed append-only release manifest")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *basePath == "" || *lockPath == "" || *historyPath == "" {
+		return fmt.Errorf("--base-lock, --lock and --history are required")
+	}
+	base, err := contract.Read(*basePath)
+	if err != nil {
+		return err
+	}
+	proposed, err := contract.Read(*lockPath)
+	if err != nil {
+		return err
+	}
+	baseHistory := &contract.ReleaseManifest{Format: 1, Releases: []contract.Release{}}
+	if *baseHistoryPath != "" {
+		if _, statErr := os.Stat(*baseHistoryPath); statErr == nil {
+			baseHistory, err = contract.ReadReleaseManifest(*baseHistoryPath)
+			if err != nil {
+				return err
+			}
+		} else if !os.IsNotExist(statErr) {
+			return statErr
+		}
+	}
+	history, err := contract.ReadReleaseManifest(*historyPath)
+	if err != nil {
+		return err
+	}
+	if err := contract.CheckReleaseTransition(base, proposed, baseHistory, history); err != nil {
+		return err
+	}
+	fmt.Printf("%s %s release assignment is valid\n", proposed.API, proposed.Version)
 	return nil
 }

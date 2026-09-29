@@ -38,7 +38,7 @@ Format 2 supports proto2 and proto3 declarations reachable from the selected ser
 
 The policy is intentionally stricter than protobuf wire compatibility because generated source compatibility matters to application developers.
 
-`check` compares the captured service, method, field, and enum data. It is not a byte-for-byte lock comparison or a signature/integrity check. A lock that matches the schema does not prove the recorded version was historically assigned correctly; review and version-control lock changes. The compiler [workflow](COMPILER.md) explains initialization, intentional updates, and build-time generation.
+`check` compares the captured service, method, field, and enum data. `release-check` also validates lock structure and digest, then binds each API/version to the append-only history from the trusted base revision. Neither command is a cryptographic signature. The compiler [workflow](COMPILER.md) explains initialization, intentional updates, and build-time generation.
 
 ## Semantic changes
 

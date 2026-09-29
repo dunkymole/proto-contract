@@ -54,7 +54,7 @@ func descriptorSet(defaultValue *string, required bool, enumValues ...*descripto
 	request := &descriptorpb.DescriptorProto{Name: proto.String("Request"), Field: []*descriptorpb.FieldDescriptorProto{field}}
 	response := &descriptorpb.DescriptorProto{Name: proto.String("Response")}
 	service := &descriptorpb.ServiceDescriptorProto{Name: proto.String("S"), Method: []*descriptorpb.MethodDescriptorProto{{Name: proto.String("Call"), InputType: proto.String(".test.Request"), OutputType: proto.String(".test.Response")}}}
-	enum := &descriptorpb.EnumDescriptorProto{Name: proto.String("Status"), Value: enumValues}
+	enum := &descriptorpb.EnumDescriptorProto{Name: proto.String("Status"), Options: &descriptorpb.EnumOptions{AllowAlias: proto.Bool(true)}, Value: enumValues}
 	return &descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{{Name: proto.String("test.proto"), Package: proto.String("test"), Syntax: proto.String("proto2"), Service: []*descriptorpb.ServiceDescriptorProto{service}, MessageType: []*descriptorpb.DescriptorProto{request, response}, EnumType: []*descriptorpb.EnumDescriptorProto{enum}}}}
 }
 
@@ -63,7 +63,7 @@ func enumValue(name string, number int32) *descriptorpb.EnumValueDescriptorProto
 }
 
 func TestBuildCapturesDefaultsAndAliasesDeterministically(t *testing.T) {
-	defaultOne, defaultTwo := "1", "2"
+	defaultOne, defaultTwo := "ZERO", "ALIAS"
 	values := []*descriptorpb.EnumValueDescriptorProto{enumValue("ZERO", 0), enumValue("ALIAS", 0)}
 	first, err := Build(descriptorSet(&defaultOne, false, values...), "test.S", "test", "1.0.0")
 	if err != nil {
@@ -121,7 +121,10 @@ func TestBuildCapturesDefaultsAndAliasesDeterministically(t *testing.T) {
 		t.Fatalf("default change bump = %s, want major", bump)
 	}
 	emptyDefault := ""
-	empty, err := Build(descriptorSet(&emptyDefault, false, values...), "test.S", "test", "1.0.0")
+	emptyDescriptor := descriptorSet(&emptyDefault, false, values...)
+	emptyDescriptor.File[0].MessageType[0].Field[0].Type = descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()
+	emptyDescriptor.File[0].MessageType[0].Field[0].TypeName = nil
+	empty, err := Build(emptyDescriptor, "test.S", "test", "1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	}
