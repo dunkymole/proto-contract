@@ -1,33 +1,50 @@
 # Proto Contract
 
-Proto Contract gives protobuf APIs an explicit, enforceable compatibility version. It compiles a service and its reachable type graph into a deterministic lock file, calculates the minimum semantic version bump after a schema change, and supplies small gRPC runtime adapters for Python, Java, .NET, Go, and TypeScript clients using [grpc-bridge](https://github.com/dunkymole/grpc-bridge).
+**Automatic semantic versioning and compatibility handshakes for protobuf APIs.**
 
-**grpc-bridge is supported:** bind a TypeScript contract to each generated service client to enforce compatibility from browsers or Node.js against any of the four server runtimes. Clients with independent contracts can share one bridge connection. The complete demo tests the real WebSocket bridge in its interoperability matrix.
+Proto Contract calculates the version bump your schema change requires, generates that version into both client and server interceptors, and checks compatibility before application code runs. The tracked contract lock connects what you build to what your deployments accept. Application code never needs to repeat the API name or version.
 
-The rule is intentionally simple:
+Protobuf's wire format supports evolution. Proto Contract answers the deployment question: **can this client safely call this version of the service?**
+
+## Automatic semantic versioning
+
+The compiler compares a service and its reachable protobuf types with the tracked lock and calculates the minimum semantic version bump:
+
+- **Additive schema change → minor bump**, such as adding a method or field.
+- **Breaking schema change → major bump**, such as removing a method or changing a field's type.
+- **No compared contract change → no bump.** Patch does not affect compatibility.
+
+`check` detects drift and reports the required next version. After you review the change, `update` applies the calculated bump to the lock. `generate` then embeds that lock's identity and version into the client and server adapters. You choose the initial version once; subsequent schema-driven bumps are calculated automatically. Behavioral changes outside the schema can require an explicit higher bump. See the [classification policy](docs/COMPATIBILITY.md) for the exact scope and limits.
+
+## A compatibility handshake on every supported RPC
+
+The generated client declares its contract in request metadata. The generated server checks it against its own build's contract before invoking the handler: compatible requests proceed; incompatible requests receive `FAILED_PRECONDITION`.
+
+This handshake travels with the RPC itself—there is no separate preflight request or version negotiation. Each deployment keeps the contract version it was built against.
+
+For the same API identifier, acceptance requires:
 
 ```text
 client.major == server.major && client.minor <= server.minor
 ```
 
-Patch releases do not change schema compatibility. For example, a generated client sends `x-proto-contract: demo.echo@1.0.0`. A server built with the same API's lock at `1.1.0` accepts it, but rejects clients at `1.2.0` or `2.0.0` with `FAILED_PRECONDITION`. The complete runtime matrix currently covers unary RPCs; see [runtime coverage](docs/RUNTIMES.md#rpc-coverage).
-
-## Why
-
-Protobuf's wire format is designed for evolution, but an application often needs a clear answer to a different question: *can this deployed client safely call this deployed service?* Package versions and release versions do not answer that reliably. Proto Contract derives a separate version from the public protobuf graph and makes that version available at runtime.
+For example, a client sends `x-proto-contract: demo.echo@1.0.0`. A server built at `1.1.0` accepts it, but rejects clients at `1.2.0` or `2.0.0`. Both sides get these values from generated code, not handwritten configuration.
 
 ```mermaid
-flowchart LR
-  P[Service proto] --> C[Proto Contract compiler]
-  C --> L[Tracked contract lock]
-  L --> B[Generated client interceptor]
-  L --> G[Generated server interceptor]
-  B --> I[Client metadata]
-  G --> S{Compatibility check}
-  I --> S
-  S -->|compatible| A[Application handler]
-  S -->|incompatible| F[FAILED_PRECONDITION]
+sequenceDiagram
+  participant C as Generated client interceptor
+  participant S as Generated server interceptor
+  participant H as Application handler
+  C->>S: RPC + API identity + generated contract version
+  alt Compatible with server's generated contract
+    S->>H: Invoke handler
+    H-->>C: RPC response
+  else Missing or incompatible contract
+    S-->>C: FAILED_PRECONDITION
+  end
 ```
+
+**Python, Go, Java, .NET, and grpc-bridge TypeScript clients are supported.** With [grpc-bridge](https://github.com/dunkymole/grpc-bridge), independent generated clients can share one bridge connection while declaring their own contracts. The real bridge is included in the 20-combination interoperability matrix. End-to-end coverage currently focuses on unary RPCs; see [runtime coverage](docs/RUNTIMES.md#rpc-coverage).
 
 ## Try the complete demo
 
