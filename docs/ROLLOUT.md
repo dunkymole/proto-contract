@@ -84,3 +84,8 @@ The matrix verifies protocol enforcement and routing behavior. It does not
 replace application-specific deployment health checks, data migration plans,
 or capacity testing. See [compatibility classification](COMPATIBILITY.md) for
 what descriptor comparison can and cannot infer.
+
+
+The [contract-aware routing boundary](ROUTING.md) explains why backend discovery,
+version ranking, and channel failover remain responsibilities of the deployment
+routing layer rather than Proto Contract itself.
