@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools==80.9.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proto-contract-runtime"
+version = "0.2.1"
+description = "Service-scoped gRPC contract metadata and strict server enforcement"
+requires-python = ">=3.10"
+dependencies = ["grpcio>=1.71,<2"]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+authors = [{name = "Proto Contract contributors"}]
+
+[project.urls]
+Repository = "https://github.com/dunkymole/proto-contract"
+
+[tool.setuptools]
+py-modules = ["proto_contract"]

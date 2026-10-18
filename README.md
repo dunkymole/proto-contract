@@ -160,7 +160,7 @@ Regenerate when the client's contract lock changes. The generated module embeds 
 proto-contract generate --lock contracts/demo.echo.json --lang python --out echo_contract.py
 ```
 
-Make `runtimes/python/proto_contract.py` importable alongside the generated module:
+Install the locally built `proto-contract-runtime` wheel as described in [package preparation](docs/PACKAGES.md):
 
 ```python
 from concurrent import futures
@@ -225,7 +225,7 @@ proto-contract generate --lock contracts/demo.echo.json --lang java \
   --package protocontract.generated.echo --out src/main/java/protocontract/generated/echo/Contract.java
 ```
 
-Compile the generated `Contract.java` with the Java runtime adapter sources:
+Compile the generated `Contract.java` with the locally installed `io.github.dunkymole:proto-contract-runtime` dependency:
 
 ```java
 import io.grpc.ManagedChannel;
@@ -253,7 +253,7 @@ proto-contract generate --lock contracts/demo.echo.json --lang dotnet \
   --package ProtoContract.Generated.Echo --out Generated/Contract.cs
 ```
 
-Include the generated source and both interceptor sources from `runtimes/dotnet` in your project:
+Include the generated source and add the locally built `ProtoContract.Runtime` NuGet package to your project:
 
 ```csharp
 using Grpc.Core.Interceptors;
@@ -300,3 +300,5 @@ This is a working early prototype. The lock format is versioned but has not reac
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Report security concerns according to [SECURITY.md](SECURITY.md).
 
 Licensed under the [MIT License](LICENSE).
+
+Runtime package builds and a clean consumer starter are documented in [package preparation](docs/PACKAGES.md). Artifacts are currently unpublished.

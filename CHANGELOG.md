@@ -4,6 +4,8 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 ## Unreleased
 
+- Manual release preparation workflow with downloadable package assets, SHA-256 checksums and optional unpublished GitHub draft Releases.
+- Unpublished Python, Java, .NET, and Go runtime artifacts with license metadata, checksums, package-based interoperability tests, and a clean Python starter.
 - Initial contract compiler with deterministic reachable-graph locks.
 - Automatic none, minor, and major change classification and deliberate lock updates.
 - Generated client and server interceptors for Python, Go, Java, and .NET, bound to each build's lock.

@@ -14,12 +14,14 @@ RUN /proto-contract check --proto proto/demo/v1/echo.proto --proto-path proto --
 
 FROM golang:1.24-bookworm AS build
 WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
+COPY artifacts/packages/go /packages/go
+ENV GOPROXY=file:///packages/go,https://proxy.golang.org
+ENV GONOSUMDB=github.com/dunkymole/proto-contract
+RUN go mod init starter.local/demo && go mod edit -require=github.com/dunkymole/proto-contract@v0.2.1
 COPY gen gen
-COPY runtimes/go runtimes/go
 COPY examples/servers/go examples/servers/go
 COPY --from=contract-codegen /src/generated/go/contract.go gen/go/contracts/echo/contract.go
+RUN sed -i 's|github.com/dunkymole/proto-contract/gen/|starter.local/demo/gen/|g' examples/servers/go/main.go && go mod tidy
 RUN CGO_ENABLED=0 go build -o /server ./examples/servers/go
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /server /server
