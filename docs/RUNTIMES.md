@@ -70,8 +70,10 @@ underscores, leading underscores, acronym/digit combinations, namespace defaults
 explicit namespaces and Python hyphenated paths: run `./scripts/test-naming.ps1`.
 
 Legacy standalone generation without `--proto` remains available: pass both
-binding flags for typed helpers, or neither for the low-level generic API. Partial
-overrides need descriptors. TypeScript still requires its explicit module/export
+binding flags for typed helpers, or neither for the low-level generic API. For a
+global C# namespace, provide the service export and omit the import (or pass
+`--service-import ""`).
+Partial overrides otherwise need descriptors. TypeScript still requires its explicit module/export
 bindings, since its generated module layout is configured by Protobuf-ES.
 
 For .NET, set `target` (`--target`) to `client` or `server` to match `GrpcServices`
@@ -202,6 +204,13 @@ if err := orderscontract.RegisterServer(builder, implementation); err != nil { l
 server, err := builder.Build()
 if err != nil { log.Fatal(err) }
 ```
+
+`Build` reserves gRPC's single unary and stream interceptor slots for the strict
+guard. Add application interceptors with `grpc.ChainUnaryInterceptor(...)` and
+`grpc.ChainStreamInterceptor(...)` options to `Build`; they run after contract
+validation, even if they return cached responses without invoking a handler.
+Passing `grpc.UnaryInterceptor(...)` or `grpc.StreamInterceptor(...)` instead is
+rejected by gRPC as duplicate interceptor configuration.
 
 ## Go client
 

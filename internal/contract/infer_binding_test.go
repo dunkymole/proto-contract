@@ -65,7 +65,7 @@ func TestInferenceDefaultsFailuresAndGlobalNamespace(t *testing.T) {
 	if _, _, err := inferNativeBinding(service, "go", "consumer.test/pb", ""); err != nil {
 		t.Fatal(err)
 	}
-	global := inferenceService(t, "GlobalService", "global.proto", "", &descriptorpb.FileOptions{CsharpNamespace: proto.String("")})
+	global := inferenceService(t, "GlobalService", "global.proto", "global_wire.v1", &descriptorpb.FileOptions{CsharpNamespace: proto.String("")})
 	imp, exp, err = inferNativeBinding(global, "dotnet", "", "")
 	if err != nil || imp != "" || exp != "GlobalService" {
 		t.Fatalf("global namespace: %q %q %v", imp, exp, err)
@@ -75,7 +75,12 @@ func TestInferenceDefaultsFailuresAndGlobalNamespace(t *testing.T) {
 	if err != nil || !strings.Contains(string(source), "global::GlobalService.GlobalServiceClient") || strings.Contains(string(source), "global::.") {
 		t.Fatalf("global C# output: %s %v", source, err)
 	}
-	if _, _, err := inferNativeBinding(global, "java", "", ""); err == nil {
+	unnamed := inferenceService(t, "GlobalService", "unnamed.proto", "", nil)
+	imp, _, err = inferNativeBinding(unnamed, "dotnet", "", "")
+	if err != nil || imp != "" {
+		t.Fatalf("default global namespace: %q %v", imp, err)
+	}
+	if _, _, err := inferNativeBinding(unnamed, "java", "", ""); err == nil {
 		t.Fatal("accepted unusable Java default package")
 	}
 	dotted := inferenceService(t, "Service", "foo.bar.proto", "pkg", nil)

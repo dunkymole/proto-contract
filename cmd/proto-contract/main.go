@@ -109,7 +109,8 @@ func generate(args []string) error {
 			}
 			source, err = contract.GenerateNativeFromDescriptors(s, set, *language, *packageName, *serviceImport, *serviceExport, *target)
 		} else {
-			if (*serviceImport == "") != (*serviceExport == "") {
+			explicitGlobalNamespace := *language == "dotnet" && *serviceImport == "" && *serviceExport != ""
+			if (*serviceImport == "") != (*serviceExport == "") && !explicitGlobalNamespace {
 				return fmt.Errorf("partial binding overrides require --proto for inference")
 			}
 			source, err = contract.GenerateBound(s, *language, *packageName, *serviceImport, *serviceExport, *target)

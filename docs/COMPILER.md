@@ -107,7 +107,8 @@ Native protobuf imports and service types are inferred from descriptors by defau
 TypeScript still requires both explicitly. Standalone native generation infers the
 same bindings when `--proto` is supplied, and validates those descriptors against
 the lock before writing. Lock-only generation retains the legacy generic API unless
-both binding flags are supplied; partial overrides require `--proto`.
+both binding flags are supplied (or a .NET service export specifies a global
+namespace with an empty/omitted import); other partial overrides require `--proto`.
 Native entries may set `package`; .NET entries may set `target` to `client`, `server`,
 or `both` (default), matching the project's protobuf generation and dependencies.
 Lock paths resolve relative to the bindings file. Outputs are relative to protoc's

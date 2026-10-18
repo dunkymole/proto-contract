@@ -70,7 +70,11 @@ func (b *ServerBuilder) Register(contract *Server, register func(grpc.ServiceReg
 	return nil
 }
 
-// Build installs both RPC hooks. Later raw registrations are still denied globally.
+// Build reserves the single unary/stream interceptor slots for strict enforcement,
+// which gRPC runs before all chain interceptors. Supply application interceptors
+// with grpc.ChainUnaryInterceptor and grpc.ChainStreamInterceptor; gRPC rejects
+// attempts to replace the reserved single slots as duplicate configuration.
+// Later raw registrations are still denied globally.
 func (b *ServerBuilder) Build(opts ...grpc.ServerOption) (*grpc.Server, error) {
 	if b.built {
 		return nil, fmt.Errorf("server builder already built")
@@ -79,7 +83,7 @@ func (b *ServerBuilder) Build(opts ...grpc.ServerOption) (*grpc.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, grpc.ChainUnaryInterceptor(strict.Unary()), grpc.ChainStreamInterceptor(strict.Stream()))
+	opts = append(opts, grpc.UnaryInterceptor(strict.Unary()), grpc.StreamInterceptor(strict.Stream()))
 	server := grpc.NewServer(opts...)
 	for _, r := range b.registrations {
 		server.RegisterService(r.desc, r.impl)

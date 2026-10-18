@@ -55,6 +55,28 @@ func TestGenerateRequiresSupportedOptions(t *testing.T) {
 	}
 }
 
+func TestGenerateExplicitDotnetGlobalNamespaceWithoutDescriptors(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "Contract.cs")
+	args := []string{"--lock", filepath.Join("..", "..", "contracts", "demo.echo.json"), "--lang", "dotnet", "--target", "client", "--service-export", "GlobalService", "--out", out}
+	if err := generate(args); err != nil {
+		t.Fatal(err)
+	}
+	args = append(args, "--service-import", "")
+	if err := generate(args); err != nil {
+		t.Fatal(err)
+	}
+	contents, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(contents), "global::GlobalService.GlobalServiceClient") || strings.Contains(string(contents), "global::.") {
+		t.Fatalf("invalid global namespace binding: %s", contents)
+	}
+	if err := generate([]string{"--lock", filepath.Join("..", "..", "contracts", "demo.echo.json"), "--lang", "dotnet", "--service-import", "Example.Types", "--out", out}); err == nil {
+		t.Fatal("accepted missing service type without descriptors")
+	}
+}
+
 func TestSnapshotRefusesOverwriteUnlessForced(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "existing.json")
 	if err := os.WriteFile(path, []byte("keep me"), 0600); err != nil {

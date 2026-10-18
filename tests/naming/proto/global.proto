@@ -1,4 +1,5 @@
 syntax = "proto3";
+package global_wire.v1;
 option go_package = "example.test/naming/pb/globalcase";
 option java_package = "com.example.globalcase";
 option csharp_namespace = "";
