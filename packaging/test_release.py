@@ -21,6 +21,7 @@ class ReleaseTests(unittest.TestCase):
             'python/proto_contract_runtime-0.2.1-py3-none-any.whl',
             'python/proto_contract_runtime-0.2.1.tar.gz',
             'dotnet/ProtoContract.Runtime.0.2.1.nupkg', 'java/pom.xml',
+            'dotnet/ProtoContract.AspNetCore.0.2.1.nupkg',
             *[f'java/proto-contract-runtime-0.2.1{suffix}.jar' for suffix in ('', '-sources', '-javadoc')],
             *[f'go/github.com/dunkymole/proto-contract/@v/v0.2.1.{suffix}' for suffix in ('zip', 'mod', 'info')],
             'go/github.com/dunkymole/proto-contract/@v/list',
@@ -42,7 +43,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(release.prepare(self.packages, first), '0.2.1')
         release.prepare(self.packages, second)
         checksums = (first / 'SHA256SUMS').read_text().splitlines()
-        self.assertEqual(len(checksums), 9)
+        self.assertEqual(len(checksums), 10)
         for line in checksums:
             checksum, name = line.split('  ')
             self.assertEqual(hashlib.sha256((first / name).read_bytes()).hexdigest(), checksum)
@@ -50,6 +51,7 @@ class ReleaseTests(unittest.TestCase):
         with zipfile.ZipFile(first / 'proto-contract-go-proxy-0.2.1.zip') as archive:
             self.assertIn('github.com/dunkymole/proto-contract/@v/v0.2.1.mod', archive.namelist())
         self.assertTrue((first / 'proto-contract-runtime-0.2.1.pom').is_file())
+        self.assertTrue((first / 'ProtoContract.AspNetCore.0.2.1.nupkg').is_file())
 
     def test_modified_package_is_rejected(self):
         (self.packages / 'java/pom.xml').write_text('tampered')

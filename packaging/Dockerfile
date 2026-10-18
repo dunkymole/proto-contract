@@ -10,8 +10,9 @@ RUN mvn -B package && mkdir -p /packages/java && cp target/*.jar pom.xml /packag
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS dotnet-package
 WORKDIR /source
-COPY runtimes/dotnet/ .
-RUN dotnet pack -c Release -o /packages/dotnet
+COPY runtimes/dotnet/ dotnet/
+COPY runtimes/dotnet-aspnetcore/ dotnet-aspnetcore/
+RUN dotnet pack dotnet/ProtoContract.Runtime.csproj -c Release -o /packages/dotnet && dotnet pack dotnet-aspnetcore/ProtoContract.AspNetCore.csproj -c Release -o /packages/dotnet
 
 FROM python:3.13-slim AS go-package
 WORKDIR /source

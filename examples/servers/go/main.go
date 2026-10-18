@@ -9,7 +9,7 @@ import (
 
 	echocontract "github.com/dunkymole/proto-contract/gen/go/contracts/echo"
 	pb "github.com/dunkymole/proto-contract/gen/go/demo/v1"
-	"google.golang.org/grpc"
+	"github.com/dunkymole/proto-contract/runtimes/go/protocontract"
 )
 
 type server struct {
@@ -57,13 +57,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	strict, err := echocontract.StrictServer()
-	if err != nil {
+	builder := protocontract.NewServerBuilder()
+	if err := echocontract.RegisterServer(builder, server{}); err != nil {
 		log.Fatal(err)
 	}
-	s := grpc.NewServer(grpc.ChainUnaryInterceptor(strict.Unary()), grpc.ChainStreamInterceptor(strict.Stream()))
-	pb.RegisterEchoServiceServer(s, server{})
-	if err := strict.ValidateRegisteredServices(s); err != nil {
+	s, err := builder.Build()
+	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("Go server listening on :50051")

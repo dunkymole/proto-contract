@@ -8,6 +8,8 @@ import grpc
 from echo_contract import API, VERSION, SERVICE, ServerInterceptor, StrictServerInterceptor
 from proto_contract import compatibility_error, ContractClientInterceptor, StrictServerInterceptor as RuntimeStrictServerInterceptor
 from demo.v1 import echo_pb2, echo_pb2_grpc
+import echo_contract
+from proto_contract import ServerBuilder
 
 
 class Rejected(Exception):
@@ -22,6 +24,21 @@ class Context:
 
 
 class GeneratedServerTests(unittest.TestCase):
+    def test_combined_builder_rejects_mismatches_duplicates_and_reuse(self):
+        builder = ServerBuilder()
+        impl = echo_pb2_grpc.EchoServiceServicer()
+        with self.assertRaises(ValueError):
+            echo_contract.add_to_server_with_callback(builder, echo_pb2_grpc.UnprotectedServiceServicer(), echo_pb2_grpc.add_UnprotectedServiceServicer_to_server)
+        echo_contract.add_to_server(builder, impl)
+        with self.assertRaises(ValueError):
+            echo_contract.add_to_server(builder, impl)
+        server = builder.build(futures.ThreadPoolExecutor(max_workers=1))
+        server.stop(0)
+        with self.assertRaises(ValueError):
+            builder.build(futures.ThreadPoolExecutor(max_workers=1))
+        with self.assertRaises(ValueError):
+            echo_contract.add_to_server(builder, impl)
+
     def test_strict_dispatch_validates_exemptions(self):
         with self.assertRaises(ValueError):
             RuntimeStrictServerInterceptor({}, ["bad/service"])
@@ -56,8 +73,9 @@ class GeneratedServerTests(unittest.TestCase):
                 for request in requests:
                     yield echo_pb2.EchoResponse(text=request.text, server_language="Python")
 
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=4), interceptors=(StrictServerInterceptor(),))
-        echo_pb2_grpc.add_EchoServiceServicer_to_server(Service(), server)
+        builder = ServerBuilder()
+        echo_contract.add_to_server(builder, Service())
+        server = builder.build(futures.ThreadPoolExecutor(max_workers=4))
 
         class Unprotected(echo_pb2_grpc.UnprotectedServiceServicer):
             def Call(self, request, context):
@@ -74,7 +92,9 @@ class GeneratedServerTests(unittest.TestCase):
                 self.addCleanup(channel.close)
                 return echo_pb2_grpc.EchoServiceStub(channel)
 
-            good = stub_for(__import__("echo_contract").ClientInterceptor())
+            channel = grpc.insecure_channel(f"localhost:{port}")
+            self.addCleanup(channel.close)
+            good = echo_contract.client(channel)
             self.assertEqual(good.Echo(request, timeout=3).text, "stream")
             self.assertEqual(good.EchoClientStream(iter([request]), timeout=3).text, "stream")
             self.assertEqual([r.text for r in good.EchoServerStream(request, timeout=3)], ["stream"])

@@ -10,6 +10,7 @@ implementation, independently of the API version in each generated contract lock
 | Python | `proto-contract-runtime` (import `proto_contract`) | Python 3.13; requires Python 3.10+ | grpcio >=1.71,<2 |
 | Java | `io.github.dunkymole:proto-contract-runtime` | JDK 21 build, Java 17 bytecode | grpc-api 1.71.0; Maven dependency mediation |
 | .NET | `ProtoContract.Runtime` (namespace `ProtoContract`) | .NET 9 SDK; targets net8.0 | Grpc.Core.Api >=2.71,<3 |
+| .NET server integration | `ProtoContract.AspNetCore` (namespace `ProtoContract`) | .NET 9 SDK; targets net8.0 | Runtime package, ASP.NET Core, Grpc.AspNetCore.Server >=2.71,<3 |
 
 The minimum language versions are package requirements, not a claim that every
 language/dependency combination has been tested. The matrix uses the baseline
@@ -26,7 +27,7 @@ From the repository root, with Docker Desktop (Linux containers) and PowerShell:
 ```
 
 This builds a Python wheel and source distribution, Java binary, source and API-documentation JARs and
-POM, a NuGet package, and a Go file-proxy module ZIP under `artifacts/packages/`.
+POM, core and ASP.NET Core NuGet packages, and a Go file-proxy module ZIP under `artifacts/packages/`.
 `manifest.json` records SHA-256 checksums, the source revision and whether the
 source tree had uncommitted changes when built.
 It runs the starter in a fresh virtual environment, then the 20-combination
@@ -58,6 +59,8 @@ python -m pip install artifacts/packages/python/*.whl
 mvn install:install-file -Dfile=artifacts/packages/java/proto-contract-runtime-0.2.1.jar -DpomFile=artifacts/packages/java/pom.xml
 dotnet nuget add source /absolute/path/to/artifacts/packages/dotnet --name proto-contract-local
 dotnet add package ProtoContract.Runtime --version 0.2.1
+# ASP.NET Core servers also install:
+dotnet add package ProtoContract.AspNetCore --version 0.2.1
 ```
 
 Keep NuGet.org enabled for the transitive gRPC dependency. The container examples
@@ -71,8 +74,9 @@ the unpublished local artifact; normal published consumption must use checksums.
 Generate each service binding from its build's checked lock, then follow
 [runtime wiring](RUNTIMES.md). Install strict dispatch globally, cover every
 registered service, and explicitly exempt infrastructure services when needed.
-The public API is the existing client/server interceptors, strict dispatch and
-coverage helpers used by generated modules. Runtime internals are not a separate
+The public API includes inferred typed client/registration helpers, server builders,
+ASP.NET Core extensions, and the existing low-level interceptors, strict dispatch
+and coverage helpers. Runtime internals are not a separate
 stability promise. Python's asynchronous grpc.aio API is not covered by this
 synchronous adapter.
 

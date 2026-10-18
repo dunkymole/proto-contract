@@ -23,7 +23,7 @@ with tarfile.open(root / 'python/proto_contract_runtime-0.2.1.tar.gz') as archiv
     assert archive.extractfile('proto_contract_runtime-0.2.1/pyproject.toml') is not None
 print('PASS: Python source distribution includes build metadata and MIT notice')
 
-classes = ['ContractClientInterceptor', 'ContractServerInterceptor', 'StrictServerInterceptor', 'ServiceCoverage']
+classes = ['ContractClientInterceptor', 'ContractServerInterceptor', 'StrictServerInterceptor', 'ServiceCoverage', 'ContractServerBuilder']
 verify_zip(root / 'java/proto-contract-runtime-0.2.1.jar',
            [f'io/github/dunkymole/protocontract/{name}.class' for name in classes], 'META-INF/LICENSE')
 with zipfile.ZipFile(root / 'java/proto-contract-runtime-0.2.1-sources.jar') as archive:
@@ -45,3 +45,6 @@ prefix = 'github.com/dunkymole/proto-contract@v0.2.1/'
 verify_zip(root / 'go/github.com/dunkymole/proto-contract/@v/v0.2.1.zip',
            [prefix + 'go.mod', prefix + 'runtimes/go/protocontract/interceptor.go',
             prefix + 'runtimes/contract-vectors.json'], prefix + 'LICENSE')
+
+verify_zip(root / 'dotnet/ProtoContract.AspNetCore.0.2.1.nupkg',
+           ['lib/net8.0/ProtoContract.AspNetCore.dll', 'README.md', 'ProtoContract.AspNetCore.nuspec'], 'LICENSE')

@@ -18,25 +18,33 @@ import (
 var servers = map[string]string{"Go": "go-server:50051", "Java": "java-server:50053", ".NET": "dotnet-server:50054", "Python": "python-server:50055"}
 
 func call(target string, interceptor grpc.UnaryClientInterceptor) (*pb.EchoResponse, error) {
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(interceptor), grpc.WithStreamInterceptor(echocontract.ClientStreamInterceptor()))
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	if interceptor != nil {
+		opts = append(opts, grpc.WithUnaryInterceptor(interceptor))
+	}
+	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	return pb.NewEchoServiceClient(conn).Echo(ctx, &pb.EchoRequest{Text: "hello", RequestId: "demo"})
+	client := echocontract.NewClient(conn)
+	if interceptor != nil {
+		client = pb.NewEchoServiceClient(conn)
+	}
+	return client.Echo(ctx, &pb.EchoRequest{Text: "hello", RequestId: "demo"})
 }
 
 func callStreams(target string) error {
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(echocontract.ClientInterceptor()), grpc.WithStreamInterceptor(echocontract.ClientStreamInterceptor()))
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	client := pb.NewEchoServiceClient(conn)
+	client := echocontract.NewClient(conn)
 	request := &pb.EchoRequest{Text: "stream", RequestId: "demo"}
 	clientStream, err := client.EchoClientStream(ctx)
 	if err != nil {
@@ -107,7 +115,7 @@ func expectRejectedStream(target string, interceptor grpc.StreamClientIntercepto
 
 func main() {
 	for expected, target := range servers {
-		response, err := call(target, echocontract.ClientInterceptor())
+		response, err := call(target, nil)
 		if err != nil {
 			log.Fatal(err)
 		}

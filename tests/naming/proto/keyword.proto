@@ -1,0 +1,7 @@
+syntax = "proto3";
+package keyword_case;
+option go_package = "example.test/naming/pb/keywordcase";
+option java_package = "com.example.keywordcase";
+message Request {}
+message Response {}
+service class { rpc Ping(Request) returns (Response); }

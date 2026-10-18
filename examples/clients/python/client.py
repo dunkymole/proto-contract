@@ -1,7 +1,7 @@
 import grpc
 
 from proto_contract import ContractClientInterceptor
-from echo_contract import ClientInterceptor
+import echo_contract
 from demo.v1 import echo_pb2, echo_pb2_grpc
 
 SERVERS = {
@@ -12,15 +12,16 @@ SERVERS = {
 }
 
 
-def call(target, interceptor):
-    channel = grpc.intercept_channel(grpc.insecure_channel(target), interceptor)
-    stub = echo_pb2_grpc.EchoServiceStub(channel)
-    return stub.Echo(echo_pb2.EchoRequest(text="hello", request_id="demo"), timeout=4)
+def call(target, interceptor=None):
+    with grpc.insecure_channel(target) as channel:
+        stub = (echo_contract.client(channel) if interceptor is None
+                else echo_pb2_grpc.EchoServiceStub(grpc.intercept_channel(channel, interceptor)))
+        return stub.Echo(echo_pb2.EchoRequest(text="hello", request_id="demo"), timeout=4)
 
 
-def call_streams(target, interceptor):
-    channel = grpc.intercept_channel(grpc.insecure_channel(target), interceptor)
-    stub = echo_pb2_grpc.EchoServiceStub(channel)
+def call_streams(target):
+    channel = grpc.insecure_channel(target)
+    stub = echo_contract.client(channel)
     request = echo_pb2.EchoRequest(text="stream", request_id="demo")
     response = stub.EchoClientStream(iter([request]), timeout=4)
     assert response.text == "stream", response
@@ -50,9 +51,9 @@ def wait_for(target):
 def main():
     for expected, target in SERVERS.items():
         wait_for(target)
-        response = call(target, ClientInterceptor())
+        response = call(target)
         assert response.text == "hello" and response.server_language == expected, response
-        call_streams(target, ClientInterceptor())
+        call_streams(target)
         expect_stream_rejected(target, ContractClientInterceptor("demo.echo", "1.2.0"))
         expect_stream_rejected(target, None)
         for rejected in ("1.2.0", "2.0.0"):

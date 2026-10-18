@@ -1,0 +1,15 @@
+syntax = "proto3";
+package unusual_proto.v2alpha;
+option go_package = "example.test/naming/pb/edge;edge";
+option java_package = "com.example.generated";
+option java_multiple_files = true;
+option csharp_namespace = "Explicit.Namespace";
+message Request {}
+message Response {}
+service snake_case { rpc Ping(Request) returns (Response); }
+service foo__bar { rpc Ping(Request) returns (Response); }
+service _leading { rpc Ping(Request) returns (Response); }
+service HTTP_service2API { rpc Ping(Request) returns (Response); }
+service foo2_bar { rpc Ping(Request) returns (Response); }
+service _ { rpc Ping(Request) returns (Response); }
+service package { rpc Ping(Request) returns (Response); }

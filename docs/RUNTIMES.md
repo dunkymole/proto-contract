@@ -9,25 +9,79 @@ Use the [compiler setup and build workflow](COMPILER.md) before the commands bel
 Each build's tracked lock is the source of its API identity and version, for both clients and servers. Run `check` against the proto and lock, then generate native adapters from the lock. The TypeScript grpc-bridge client uses the protoc plugin so it validates that lock against the same descriptors used for the generated service binding. Regenerate after updating that build's lock. Outputs embed the version at build time; they do not query the other endpoint or negotiate a different version. Client and server builds may use different lock versions.
 
 ```sh
-proto-contract generate --lock contracts/orders.json --lang python --out orders_contract.py
-proto-contract generate --lock contracts/orders.json --lang go --package orderscontract --out gen/orderscontract/contract.go
-proto-contract generate --lock contracts/orders.json --lang java --package contracts.orders --out src/main/java/contracts/orders/Contract.java
-proto-contract generate --lock contracts/orders.json --lang dotnet --package Contracts.Orders --out Generated/Orders/Contract.cs
+proto-contract generate --lock contracts/orders.json --lang python --proto proto/orders/v1/orders.proto --proto-path proto --out orders_contract.py
+proto-contract generate --lock contracts/orders.json --lang go --package orderscontract --proto proto/orders/v1/orders.proto --proto-path proto --out gen/orderscontract/contract.go
+proto-contract generate --lock contracts/orders.json --lang java --package contracts.orders --proto proto/orders/v1/orders.proto --proto-path proto --out src/main/java/contracts/orders/Contract.java
+proto-contract generate --lock contracts/orders.json --lang dotnet --package Contracts.Orders --proto proto/orders/v1/orders.proto --proto-path proto --target client --out Generated/Orders/Contract.cs
 ```
 
 | Language | Generated client | Generated server | Runtime dependency |
 | --- | --- | --- | --- |
-| Python | `orders_contract.ClientInterceptor()` | `orders_contract.StrictServerInterceptor()` | Installed `proto-contract-runtime` wheel |
-| Go | `orderscontract.ClientInterceptor()` | `orderscontract.StrictServer()` | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` |
-| Java | `contracts.orders.Contract.clientInterceptor()` | `contracts.orders.Contract.strictServerInterceptor()` | `io.github.dunkymole:proto-contract-runtime` dependency |
-| .NET | `Contracts.Orders.Contract.ClientInterceptor()` | `Contracts.Orders.Contract.StrictServerInterceptor()` | `ProtoContract.Runtime` NuGet package |
+| Python | `orders_contract.client(channel)` | `orders_contract.add_to_server(builder, impl)` | Installed `proto-contract-runtime` wheel |
+| Go | `orderscontract.NewClient(conn)` | `orderscontract.RegisterServer(builder, impl)` | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` |
+| Java | `Contract.blockingClient(channel)` | `Contract.addService(builder, impl)` | `io.github.dunkymole:proto-contract-runtime` dependency |
+| .NET | `Contract.CreateClient(channel)` | `Contract.MapService<Impl>(app)` | `ProtoContract.Runtime`; servers also use `ProtoContract.AspNetCore` |
 | TypeScript | `connection.client(contract)` from the generated strict artifact | Native backend uses one of the server runtimes above | Connect 2.x, Protobuf-ES 2.15.0, strict grpc-bridge package; see below |
 
-`--package` sets the Go/Java package or C# namespace. Defaults are `contractgen`, `protocontract.generated`, and `ProtoContract.Generated`, respectively. Java emits a public class named `Contract`, so use `Contract.java`. Generate a distinct module/package/namespace per service. Generated metadata constants are available for inspection; application setup uses the no-argument entry points. Native Go, Python, Java, and .NET adapters enforce unary-unary, client-streaming, server-streaming, and bidirectional RPCs.
+`--package` sets the Go/Java package or C# namespace. Defaults are `contractgen`, `protocontract.generated`, and `ProtoContract.Generated`, respectively. Java emits a public class named `Contract`, so use `Contract.java`. Generate a distinct module/package/namespace per service. Generated metadata constants are available for inspection; combined helpers need no API or version arguments. Native Go, Python, Java, and .NET adapters enforce unary-unary, client-streaming, server-streaming, and bidirectional RPCs.
 
-Use the generated strict dispatcher for servers that must fail closed. It owns a map from fully-qualified protobuf service names to each service's contract interceptor and rejects calls to any registered service missing from that map before reaching application handlers. Add intentional exemptions by fully-qualified name only. Install it globally: Python's `StrictServerInterceptor` in `grpc.server(..., interceptors=...)`, Go's generated `StrictServer` with both unary and stream chains, Java's `ServerBuilder.intercept(...)`, or .NET's global `AddGrpc(options => options.Interceptors.Add<StrictServerInterceptor>())`. Go can additionally call `ValidateRegisteredServices(server)` after registering services to detect a missing entry at startup; other adapters enforce the same rule at dispatch. Do not attach strict enforcement only to selected services, since a later service could otherwise bypass it. The generated wrappers own no server or channel lifecycle.
+Use the combined registration helpers below. Each server builder collects service/contract pairs and installs one global strict dispatcher when built. .NET installs it with `AddContractGrpc()` and collects pairs during endpoint mapping, freezing contracts when the host starts. A registered service without a contract is denied before application handlers run, including services registered through ordinary gRPC APIs. Registration helpers reject mismatched service names and duplicate contracts. Configure builders before building; they are single-use and not intended for concurrent mutation. .NET endpoint conventions validate the actual protobuf service name during endpoint construction.
 
-On clients, generated interceptors are service-scoped and leave calls to other services unchanged, which lets independently generated clients share a channel. For multiple server contracts, combine each generated service interceptor in the strict dispatcher's contract map. Java and .NET examples use global strict dispatch so adding an unlisted service is denied. The dispatcher lets explicitly exempt services proceed without contract metadata; exemptions should be deliberate and kept narrow.
+Typed helpers bind protection to each client, including all streaming shapes, without changing the shared connection. Protobuf symbols are inferred during descriptor-based generation; application code passes only a connection or implementation. Register multiple generated contracts on the same server builder; no manual dispatch map or unary/stream wiring is needed. Python/Go server builders and Java's `ContractServerBuilder` accept explicit fully-qualified exemptions at construction; .NET accepts them in `AddContractGrpc(...)`. Register exempt health/reflection services through ordinary gRPC APIs on the resulting server (or Java's underlying builder). The owner still closes channels, starts/stops servers, and configures transport security. Low-level interceptors remain available for advanced integration and negative tests.
+
+### Bind protobuf types at generation time
+
+The native protoc plugin infers protobuf imports and service types by default.
+Standalone generation does the same when given `--proto` and `--proto-path`; the
+service is taken from the lock. Neither path needs `service_import` or
+`service_export` for a conventional build.
+
+| Language | Import/namespace inference | Service type inference |
+| --- | --- | --- |
+| Go | `go_package`, excluding its optional `;alias` suffix | Public Go protobuf generator naming API |
+| Python | Descriptor file path with hyphens normalized and `_pb2_grpc` suffix; the proto package does not determine imports | Original service name |
+| Java | `java_package`, otherwise the proto package; independent of `java_multiple_files` | Original service name plus `Grpc` |
+| .NET | `csharp_namespace` when explicitly set, otherwise the standard namespace conversion of the proto package; empty/global namespaces are supported | Original service name |
+
+```json
+{
+  "service": "demo.v1.EchoService",
+  "lock": "demo.echo.json",
+  "output": "generated/python/echo_contract.py"
+}
+```
+
+`service_import` and `service_export` remain independent optional overrides (or
+`--service-import` and `--service-export` on the CLI). Override only the part that
+differs from the descriptors. For example, the Go consumer examples use
+`"service_import": "starter.local/demo/gen/go/demo/v1"` because their generated
+files live in a different module from the proto's `go_package`. External Go `M`
+mappings, Python prefix stripping, and relocated/custom bindings must be supplied
+explicitly: the plugin cannot see another generator's command-line options.
+
+Descriptor-based generation validates the exact lock, then fails with an actionable
+error if a binding cannot be inferred or represented. It never silently emits
+generic helpers. Missing Go `go_package` requires an import override. Java's unnamed
+package cannot be referenced from a named contract package. Python filenames with
+dots inside path components need an explicit import and matching relocation;
+keyword service names emitted as invalid source by Python/C# gRPC are rejected.
+Naming conformance tests compile/import actual protobuf outputs, including
+underscores, leading underscores, acronym/digit combinations, namespace defaults,
+explicit namespaces and Python hyphenated paths: run `./scripts/test-naming.ps1`.
+
+Legacy standalone generation without `--proto` remains available: pass both
+binding flags for typed helpers, or neither for the low-level generic API. For a
+global C# namespace, provide the service export and omit the import (or pass
+`--service-import ""`).
+Partial overrides otherwise need descriptors. TypeScript still requires its explicit module/export
+bindings, since its generated module layout is configured by Protobuf-ES.
+
+For .NET, set `target` (`--target`) to `client` or `server` to match `GrpcServices`
+in the project. Client output references only the generated client and core runtime;
+server output adds a typed `MapService<TService>(app)` constrained to that protobuf
+service's base class and requires `ProtoContract.AspNetCore`. The default `both`
+requires both protobuf bindings and the server integration package. Java provides
+`client(channel)`, `blockingClient(channel)`, and `futureClient(channel)`.
 
 ## Dependencies and generated files
 
@@ -124,73 +178,76 @@ The [Docker example](../examples/clients/grpc-bridge/README.md) builds the unpub
 ## Python client
 
 ```python
-from orders_contract import ClientInterceptor
+import orders_contract
 import grpc
 
-channel = grpc.intercept_channel(
-    grpc.secure_channel("orders.example:443", grpc.ssl_channel_credentials()),
-    ClientInterceptor(),
-)
-stub = OrdersStub(channel)
+channel = grpc.secure_channel("orders.example:443", grpc.ssl_channel_credentials())
+stub = orders_contract.client(channel)
 ```
 
 ## Python server
 
 ```python
-from orders_contract import StrictServerInterceptor
+from proto_contract import ServerBuilder
+import orders_contract
 
-server = grpc.server(
-    executor,
-    interceptors=(StrictServerInterceptor(),),
-)
+builder = ServerBuilder()
+orders_contract.add_to_server(builder, implementation)
+server = builder.build(executor)
 ```
 
 ## Go server
 
 ```go
-strict, err := orderscontract.StrictServer() // accepts explicit service exemptions if needed
+builder := protocontract.NewServerBuilder()
+if err := orderscontract.RegisterServer(builder, implementation); err != nil { log.Fatal(err) }
+server, err := builder.Build()
 if err != nil { log.Fatal(err) }
-server := grpc.NewServer(grpc.ChainUnaryInterceptor(strict.Unary()), grpc.ChainStreamInterceptor(strict.Stream()))
-orderspb.RegisterOrdersServer(server, implementation)
-if err := strict.ValidateRegisteredServices(server); err != nil { log.Fatal(err) }
 ```
+
+`Build` reserves gRPC's single unary and stream interceptor slots for the strict
+guard. Add application interceptors with `grpc.ChainUnaryInterceptor(...)` and
+`grpc.ChainStreamInterceptor(...)` options to `Build`; they run after contract
+validation, even if they return cached responses without invoking a handler.
+Passing `grpc.UnaryInterceptor(...)` or `grpc.StreamInterceptor(...)` instead is
+rejected by gRPC as duplicate interceptor configuration.
 
 ## Go client
 
 Import `orderscontract` from the module path where you generated `gen/orderscontract/contract.go`. Supply your normal transport credentials and close the connection when the client shuts down.
 
 ```go
-connection, _ := grpc.NewClient(target,
-    grpc.WithTransportCredentials(credentials),
-    grpc.WithUnaryInterceptor(orderscontract.ClientInterceptor()),
-    grpc.WithStreamInterceptor(orderscontract.ClientStreamInterceptor()),
-)
+connection, err := grpc.NewClient(target, grpc.WithTransportCredentials(credentials))
+if err != nil { log.Fatal(err) }
+client := orderscontract.NewClient(connection)
 ```
 
 ## Java server
 
 ```java
-builder.addService(new OrdersService());
-builder.intercept(contracts.orders.Contract.strictServerInterceptor());
+var builder = new ContractServerBuilder(ServerBuilder.forPort(50051));
+contracts.orders.Contract.addService(builder, new OrdersService());
+var server = builder.build();
 ```
 
 ## Java client
 
 ```java
-OrdersGrpc.OrdersBlockingStub stub = OrdersGrpc.newBlockingStub(channel)
-    .withInterceptors(contracts.orders.Contract.clientInterceptor());
+var stub = contracts.orders.Contract.blockingClient(channel);
+var asyncStub = contracts.orders.Contract.client(channel);
 ```
 
 ## .NET server
 
 ```csharp
-services.AddSingleton(Contracts.Orders.Contract.StrictServerInterceptor());
-services.AddGrpc(options => options.Interceptors.Add<ProtoContract.StrictServerInterceptor>());
+// Install ProtoContract.AspNetCore and import the ProtoContract namespace.
+builder.Services.AddContractGrpc();
+var app = builder.Build();
+Contracts.Orders.Contract.MapService<OrdersService>(app);
 ```
 
 ## .NET client
 
 ```csharp
-var invoker = channel.Intercept(Contracts.Orders.Contract.ClientInterceptor());
-var client = new Orders.OrdersClient(invoker);
+var client = Contracts.Orders.Contract.CreateClient(channel);
 ```

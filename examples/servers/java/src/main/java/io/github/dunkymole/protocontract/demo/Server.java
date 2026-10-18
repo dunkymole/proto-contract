@@ -1,6 +1,7 @@
 package io.github.dunkymole.protocontract.demo;
 
 import io.grpc.ServerBuilder;
+import io.github.dunkymole.protocontract.ContractServerBuilder;
 import io.grpc.stub.StreamObserver;
 import protocontract.generated.echo.Contract;
 import io.github.dunkymole.protocontract.demo.v1.*;
@@ -36,12 +37,36 @@ public final class Server {
     }
   }
   public static void main(String[] args) throws Exception {
-    io.grpc.Server server = ServerBuilder.forPort(50053)
-        .addService(new EchoImpl())
-        .addService(new UnprotectedImpl())
-        .intercept(Contract.strictServerInterceptor())
-        .build().start();
+    verifyCombinedRegistration();
+    ServerBuilder<?> nativeBuilder = ServerBuilder.forPort(50053);
+    // Deliberate bypass fixture: the global guard must reject this service.
+    nativeBuilder.addService(new UnprotectedImpl());
+    ContractServerBuilder builder = new ContractServerBuilder(nativeBuilder);
+    Contract.addService(builder, new EchoImpl());
+    io.grpc.Server server = builder.build().start();
     System.out.println("Java server listening on :50053");
     server.awaitTermination();
+  }
+
+  private static void verifyCombinedRegistration() {
+    var builder = new ContractServerBuilder(ServerBuilder.forPort(0));
+    try {
+      builder.addService(new UnprotectedImpl(), Contract.serverInterceptor());
+      throw new AssertionError("accepted mismatched contract registration");
+    } catch (IllegalArgumentException expected) { }
+    Contract.addService(builder, new EchoImpl());
+    try {
+      Contract.addService(builder, new EchoImpl());
+      throw new AssertionError("accepted duplicate contract registration");
+    } catch (IllegalArgumentException expected) { }
+    builder.build().shutdownNow();
+    try {
+      Contract.addService(builder, new EchoImpl());
+      throw new AssertionError("accepted registration after build");
+    } catch (IllegalStateException expected) { }
+    try {
+      builder.build();
+      throw new AssertionError("accepted second build");
+    } catch (IllegalStateException expected) { }
   }
 }

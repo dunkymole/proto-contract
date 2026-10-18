@@ -48,12 +48,13 @@ func generate(args []string) error {
 	language := fs.String("lang", "typescript", "output language: typescript, python, go, java, dotnet")
 	packageName := fs.String("package", "", "generated Go/Java package or .NET namespace")
 	out := fs.String("out", "", "generated module path")
-	protoFile := fs.String("proto", "", "root .proto file (required for strict TypeScript generation)")
+	protoFile := fs.String("proto", "", "root .proto file (enables native binding inference; required for TypeScript)")
 	protoPath := fs.String("proto-path", ".", "protoc import root")
 	service := fs.String("service", "", "fully-qualified protobuf service (required for TypeScript)")
 	protoc := fs.String("protoc", "protoc", "protoc executable")
-	serviceImport := fs.String("service-import", "", "TypeScript module specifier for the generated Protobuf-ES service")
-	serviceExport := fs.String("service-export", "", "TypeScript service descriptor export name")
+	serviceImport := fs.String("service-import", "", "protobuf module/package import for typed helpers")
+	serviceExport := fs.String("service-export", "", "protobuf service type name (TypeScript descriptor export)")
+	target := fs.String("target", "", ".NET typed helper target: client, server or both")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -77,6 +78,9 @@ func generate(args []string) error {
 	}
 	var source []byte
 	if *language == "typescript" {
+		if *target != "" {
+			return fmt.Errorf("--target is only supported for .NET")
+		}
 		if *packageName != "" {
 			return fmt.Errorf("--package is only valid for native generation; TypeScript uses a service import and export")
 		}
@@ -95,10 +99,22 @@ func generate(args []string) error {
 			return err
 		}
 	} else {
-		if *protoFile != "" || *service != "" || *serviceImport != "" || *serviceExport != "" {
-			return fmt.Errorf("--proto, --service, --service-import and --service-export are only valid for strict TypeScript generation")
+		if *service != "" && *service != s.Service.Name {
+			return fmt.Errorf("--service does not match contract lock service %s", s.Service.Name)
 		}
-		source, err = contract.Generate(s, *language, *packageName)
+		if *protoFile != "" {
+			set, compileErr := contract.CompileDescriptorSet(*protoc, *protoPath, *protoFile)
+			if compileErr != nil {
+				return compileErr
+			}
+			source, err = contract.GenerateNativeFromDescriptors(s, set, *language, *packageName, *serviceImport, *serviceExport, *target)
+		} else {
+			explicitGlobalNamespace := *language == "dotnet" && *serviceImport == "" && *serviceExport != ""
+			if (*serviceImport == "") != (*serviceExport == "") && !explicitGlobalNamespace {
+				return fmt.Errorf("partial binding overrides require --proto for inference")
+			}
+			source, err = contract.GenerateBound(s, *language, *packageName, *serviceImport, *serviceExport, *target)
+		}
 		if err != nil {
 			return err
 		}

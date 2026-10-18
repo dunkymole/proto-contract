@@ -187,3 +187,56 @@ class StrictServerInterceptor(grpc.ServerInterceptor):
         if handler is None or service in self._exemptions:
             return handler
         return _rejecting_handler(handler, "unprotected service registration")
+
+
+class _Registration:
+    def __init__(self):
+        self.handlers = []
+        self.registered = []
+
+    def add_generic_rpc_handlers(self, handlers):
+        self.handlers.extend(handlers)
+
+    def add_registered_method_handlers(self, service_name, handlers):
+        self.registered.append((service_name, handlers))
+
+
+class ServerBuilder:
+    """Collect service/contract pairs and install global enforcement at build time."""
+    def __init__(self, exemptions=()):
+        self._contracts = {}
+        self._registrations = []
+        self._exemptions = tuple(exemptions)
+        self._built = False
+
+    def add_service(self, implementation, register, contract):
+        if self._built:
+            raise ValueError("server builder already built")
+        if not isinstance(contract, ContractServerInterceptor) or not contract._service:
+            raise ValueError("service-scoped contract required")
+        registration = _Registration()
+        register(implementation, registration)
+        names = {handler.service_name() for handler in registration.handlers}
+        names.update(name for name, _ in registration.registered)
+        if names != {contract._service} or not registration.handlers:
+            raise ValueError("registration does not match contract service " + contract._service)
+        if contract._service in self._contracts:
+            raise ValueError("duplicate service " + contract._service)
+        if contract._service in self._exemptions:
+            raise ValueError("service cannot be protected and exempt")
+        self._contracts[contract._service] = contract
+        self._registrations.append(registration)
+        return self
+
+    def build(self, executor, **options):
+        if self._built:
+            raise ValueError("server builder already built")
+        interceptors = tuple(options.pop("interceptors", ()))
+        strict = StrictServerInterceptor(self._contracts, self._exemptions)
+        server = grpc.server(executor, interceptors=(strict,) + interceptors, **options)
+        for registration in self._registrations:
+            server.add_generic_rpc_handlers(registration.handlers)
+            for name, handlers in registration.registered:
+                server.add_registered_method_handlers(name, handlers)
+        self._built = True
+        return server
