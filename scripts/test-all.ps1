@@ -1,4 +1,8 @@
+param([switch]$SkipPackageBuild)
+
 $ErrorActionPreference = "Stop"
+if (-not $SkipPackageBuild) { & (Join-Path $PSScriptRoot 'build-packages.ps1') }
+
 docker build -t proto-contract-tool .
 if ($LASTEXITCODE -ne 0) { throw "Compiler build failed" }
 docker run --rm -v "${PWD}:/workspace" -w /workspace proto-contract-tool check --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --lock contracts/demo.echo.json

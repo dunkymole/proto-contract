@@ -1,8 +1,5 @@
-import sys
-
 import grpc
 
-sys.path.insert(0, "/app/runtime")
 from proto_contract import ContractClientInterceptor
 from echo_contract import ClientInterceptor
 from demo.v1 import echo_pb2, echo_pb2_grpc

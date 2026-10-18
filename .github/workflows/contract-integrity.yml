@@ -45,6 +45,9 @@ jobs:
       - name: Vet compiler and validator
         run: go vet ./...
 
+      - name: Test release assets and checksum failure handling
+        run: python3 -m unittest discover -s packaging -p 'test_release.py'
+
       - name: Build compiler for check report
         run: go build -o "$RUNNER_TEMP/proto-contract" ./cmd/proto-contract
 
@@ -74,8 +77,8 @@ jobs:
           PROTO_CONTRACT_BIN: ${{ runner.temp }}/proto-contract
         run: bash scripts/test-ci-contract-check.sh
 
-      - name: Build and run the native interoperability matrix
-        run: pwsh ./scripts/test-all.ps1
+      - name: Build packages, verify starter and run interoperability matrix
+        run: pwsh ./scripts/test-packages.ps1
 
       - name: Run the versioned rollout scenario
         run: pwsh ./scripts/test-rollout.ps1

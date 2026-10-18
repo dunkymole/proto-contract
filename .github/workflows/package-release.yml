@@ -1,0 +1,98 @@
+name: Prepare package release
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_draft:
+        description: 'Create an unpublished draft Release (requires an existing version tag at this commit)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.bundle.outputs.version }}
+    env:
+      COMPOSE_PROJECT_NAME: package-release-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Test compiler and runtime
+        run: go test ./...
+      - name: Build packages and test clean consumers
+        shell: pwsh
+        run: ./scripts/test-packages.ps1
+      - name: Test release preparation
+        run: python -m unittest discover -s packaging -p 'test_release.py'
+      - name: Prepare release files and SHA-256 checksums
+        id: bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          version=$(python scripts/prepare-release.py)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          cd artifacts/release
+          sha256sum --check SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: proto-contract-release-${{ steps.bundle.outputs.version }}
+          path: artifacts/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  draft:
+    if: ${{ inputs.create_draft }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: proto-contract-release-${{ needs.prepare.outputs.version }}
+          path: release
+      - name: Verify the existing tag and downloaded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse "refs/tags/v${VERSION}^{commit}")" = "$GITHUB_SHA"
+          test "$(jq -r .sourceRevision release/manifest.json)" = "$GITHUB_SHA"
+          test "$(jq -r .sourceHasChanges release/manifest.json)" = false
+          cd release
+          sha256sum --check SHA256SUMS
+      - name: Create draft for manual review
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "v${VERSION}" release/* --verify-tag --draft --latest=false \
+            --title "Proto Contract v${VERSION}" \
+            --notes "Runtime packages for Go, Python, Java, and .NET. Verify downloads with SHA256SUMS. See docs/PACKAGES.md at this tag for installation instructions."

@@ -8,3 +8,7 @@ obj/
 *.suo
 __pycache__/
 *.pyc
+
+artifacts/
+*.egg-info/
+dist/

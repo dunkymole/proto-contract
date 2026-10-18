@@ -15,7 +15,8 @@ RUN /proto-contract check --proto proto/demo/v1/echo.proto --proto-path proto --
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY proto /proto
-COPY runtimes/dotnet /runtimes/dotnet
+COPY artifacts/packages/dotnet /packages
+COPY packaging/NuGet.Config ./NuGet.Config
 COPY examples/clients/dotnet .
 COPY runtimes/contract-vectors.json /contract-vectors.json
 COPY --from=contract-codegen /src/generated/dotnet/Contract.cs Generated/Contract.cs

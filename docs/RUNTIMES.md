@@ -17,10 +17,10 @@ proto-contract generate --lock contracts/orders.json --lang dotnet --package Con
 
 | Language | Generated client | Generated server | Runtime dependency |
 | --- | --- | --- | --- |
-| Python | `orders_contract.ClientInterceptor()` | `orders_contract.StrictServerInterceptor()` | `runtimes/python/proto_contract.py` on the import path |
+| Python | `orders_contract.ClientInterceptor()` | `orders_contract.StrictServerInterceptor()` | Installed `proto-contract-runtime` wheel |
 | Go | `orderscontract.ClientInterceptor()` | `orderscontract.StrictServer()` | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` |
-| Java | `contracts.orders.Contract.clientInterceptor()` | `contracts.orders.Contract.strictServerInterceptor()` | Compile `runtimes/java/src/main/java` with the generated source |
-| .NET | `Contracts.Orders.Contract.ClientInterceptor()` | `Contracts.Orders.Contract.StrictServerInterceptor()` | Include runtime interceptor sources in `runtimes/dotnet` |
+| Java | `contracts.orders.Contract.clientInterceptor()` | `contracts.orders.Contract.strictServerInterceptor()` | `io.github.dunkymole:proto-contract-runtime` dependency |
+| .NET | `Contracts.Orders.Contract.ClientInterceptor()` | `Contracts.Orders.Contract.StrictServerInterceptor()` | `ProtoContract.Runtime` NuGet package |
 | TypeScript | `connection.client(contract)` from the generated strict artifact | Native backend uses one of the server runtimes above | Connect 2.x, Protobuf-ES 2.15.0, strict grpc-bridge package; see below |
 
 `--package` sets the Go/Java package or C# namespace. Defaults are `contractgen`, `protocontract.generated`, and `ProtoContract.Generated`, respectively. Java emits a public class named `Contract`, so use `Contract.java`. Generate a distinct module/package/namespace per service. Generated metadata constants are available for inspection; application setup uses the no-argument entry points. Native Go, Python, Java, and .NET adapters enforce unary-unary, client-streaming, server-streaming, and bidirectional RPCs.
@@ -31,7 +31,7 @@ On clients, generated interceptors are service-scoped and leave calls to other s
 
 ## Dependencies and generated files
 
-The generated contract module is additional to ordinary protobuf bindings. Keep it in the source tree or generated-source path compiled by your application. Include both native runtime adapter sources when the module references both client and server types, even in a client-only application. TypeScript contract artifacts import `defineContract` and `RuntimeGraph` from grpc-bridge's `/codegen` entry and the Protobuf-ES descriptor emitted alongside them.
+The generated contract module is additional to ordinary protobuf bindings. Keep it in the source tree or generated-source path compiled by your application. Install the native runtime package, which includes client and server types, even in a client-only application. TypeScript contract artifacts import `defineContract` and `RuntimeGraph` from grpc-bridge's `/codegen` entry and the Protobuf-ES descriptor emitted alongside them.
 
 The tested examples use these dependencies; see the linked build files for exact package versions and protobuf generation commands:
 
@@ -43,7 +43,7 @@ The tested examples use these dependencies; see the linked build files for exact
 | .NET | .NET 9, `Grpc.Net.Client`/`Grpc.AspNetCore`, `Grpc.Tools`; [client project](../examples/clients/dotnet/ProtoContractClientDemo.csproj), [server project](../examples/servers/dotnet/ProtoContractServerDemo.csproj) |
 | TypeScript | Node.js 24 for the executable example, Connect 2.x, Protobuf-ES 2.15.0, and pinned grpc-bridge source; [package manifest](../examples/clients/grpc-bridge/package.json), [Docker build](../examples/clients/grpc-bridge/Dockerfile) |
 
-These are demonstrated configurations, not a compatibility promise for every language/runtime release. Python/Java/.NET runtime adapters are source files in this repository; do not assume they are published language packages. grpc-bridge's example package is built locally in Docker from its pinned source revision.
+These are demonstrated configurations, not a compatibility promise for every language/runtime release. Native runtime packages are built locally and installed from artifacts by the examples. They remain unpublished; see [package preparation](PACKAGES.md). grpc-bridge's example package is built locally in Docker from its pinned source revision.
 
 ## RPC coverage
 
@@ -64,6 +64,7 @@ The metadata parser is deliberately bounded and portable; malformed or duplicate
 Run `./scripts/test-all.ps1` from the repository root in PowerShell for compiler lock checks, builds, all 20 combinations, and cleanup. Docker must run Linux containers. To run the clients manually in any shell:
 
 ```sh
+docker build -f packaging/Dockerfile --target artifacts --output type=local,dest=artifacts .
 docker compose build
 docker compose up -d go-server java-server dotnet-server python-server grpc-bridge
 docker compose run --rm -T python-client

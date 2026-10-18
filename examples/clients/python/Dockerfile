@@ -18,7 +18,8 @@ COPY examples/clients/python/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY proto/demo/v1/echo.proto /app/proto/demo/v1/echo.proto
 RUN python -m grpc_tools.protoc -I/app/proto --python_out=/app --grpc_python_out=/app /app/proto/demo/v1/echo.proto
-COPY runtimes/python/proto_contract.py /app/runtime/proto_contract.py
+COPY artifacts/packages/python /packages
+RUN pip install --no-cache-dir /packages/*.whl && python -c "import proto_contract; assert '/site-packages/' in proto_contract.__file__"
 COPY examples/clients/python/client.py /app/client.py
 COPY --from=contract-codegen /src/generated/python/echo_contract.py /app/echo_contract.py
 ENTRYPOINT ["python", "/app/client.py"]
