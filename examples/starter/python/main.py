@@ -2,7 +2,7 @@
 from concurrent import futures
 import grpc
 import proto_contract
-from echo_contract import ClientInterceptor, StrictServerInterceptor
+import echo_contract
 from demo.v1 import echo_pb2, echo_pb2_grpc
 
 
@@ -17,14 +17,14 @@ class Echo(echo_pb2_grpc.EchoServiceServicer):
 def main():
     assert 'site-packages' in proto_contract.__file__, proto_contract.__file__
     handler = Echo()
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=2),
-                         interceptors=(StrictServerInterceptor(),))
-    echo_pb2_grpc.add_EchoServiceServicer_to_server(handler, server)
+    builder = proto_contract.ServerBuilder()
+    echo_contract.add_to_server(builder, handler)
+    server = builder.build(futures.ThreadPoolExecutor(max_workers=2))
     port = server.add_insecure_port('127.0.0.1:0')
     server.start()
     try:
         with grpc.insecure_channel(f'127.0.0.1:{port}') as channel:
-            client = echo_pb2_grpc.EchoServiceStub(grpc.intercept_channel(channel, ClientInterceptor()))
+            client = echo_contract.client(channel)
             assert client.Echo(echo_pb2.EchoRequest(text='hello'), timeout=5).text == 'hello'
             print('PASS: generated client accepted')
             bare = echo_pb2_grpc.EchoServiceStub(channel)

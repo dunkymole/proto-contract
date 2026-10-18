@@ -27,6 +27,7 @@ type ServiceBinding struct {
 	Package       string `json:"package,omitempty"`
 	ServiceImport string `json:"service_import,omitempty"`
 	ServiceExport string `json:"service_export,omitempty"`
+	Target        string `json:"target,omitempty"`
 }
 
 type bindingFile struct {
@@ -102,7 +103,11 @@ func GeneratePluginResponse(req *pluginpb.CodeGeneratorRequest, language, bindin
 				return nil, fmt.Errorf("generate TypeScript binding for %s: %w", binding.Service, err)
 			}
 		} else {
-			generated, err = Generate(lock, language, binding.Package)
+			imp, exp, inferenceErr := inferNativeBinding(service, language, binding.ServiceImport, binding.ServiceExport)
+			if inferenceErr != nil {
+				return nil, fmt.Errorf("service binding %q: %w", binding.Service, inferenceErr)
+			}
+			generated, err = GenerateBound(lock, language, binding.Package, imp, exp, binding.Target)
 			if err != nil {
 				return nil, fmt.Errorf("generate %s binding for %s: %w", language, binding.Service, err)
 			}
@@ -166,10 +171,10 @@ func validateBinding(binding ServiceBinding, language string) error {
 		return fmt.Errorf("output must be a relative path without '..' components")
 	}
 	if language != "typescript" {
-		if binding.ServiceImport != "" || binding.ServiceExport != "" {
-			return fmt.Errorf("service_import and service_export are only valid for TypeScript")
-		}
-		return nil
+		return validateNativeOverrides(language, binding.ServiceImport, binding.ServiceExport, binding.Target)
+	}
+	if binding.Target != "" {
+		return fmt.Errorf("target is only supported for .NET")
 	}
 	if binding.Package != "" {
 		return fmt.Errorf("package is not used for TypeScript")

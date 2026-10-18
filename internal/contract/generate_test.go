@@ -91,7 +91,7 @@ func TestCheckedInGoContractMatchesLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := Generate(s, "go", "echocontract")
+	want, err := GenerateBound(s, "go", "echocontract", "github.com/dunkymole/proto-contract/gen/go/demo/v1", "EchoService", "")
 	if err != nil {
 		t.Fatal(err)
 	}

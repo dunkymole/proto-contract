@@ -7,7 +7,8 @@ import threading
 import grpc
 
 from demo.v1 import echo_pb2, echo_pb2_grpc
-from echo_contract import StrictServerInterceptor
+import echo_contract
+from proto_contract import ServerBuilder
 
 
 BUILD_ID = os.environ["BUILD_ID"]
@@ -72,13 +73,14 @@ class StateHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    server = grpc.server(
+    builder = ServerBuilder()
+    echo_contract.add_to_server(builder, EchoService())
+    server = builder.build(
         futures.ThreadPoolExecutor(max_workers=8),
-        # Place the counter outside strict enforcement so it observes rejected
-        # calls too; handler_calls below independently proves they did not run.
-        interceptors=(AttemptCounterInterceptor(), StrictServerInterceptor()),
+        # Handler resolution observes rejected calls too; handler_calls below
+        # independently proves that application handlers did not run.
+        interceptors=(AttemptCounterInterceptor(),),
     )
-    echo_pb2_grpc.add_EchoServiceServicer_to_server(EchoService(), server)
     if server.add_insecure_port("[::]:50051") == 0:
         raise RuntimeError("could not bind rollout gRPC server")
     admin = ThreadingHTTPServer(("0.0.0.0", 9090), StateHandler)

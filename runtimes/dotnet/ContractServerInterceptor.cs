@@ -13,6 +13,7 @@ public class ContractServerInterceptor : Interceptor
     private readonly string api;
     private readonly string serverVersion;
     internal readonly string? Service;
+    public string? ServiceName => Service;
 
     public ContractServerInterceptor(string api, string serverVersion, string? service = null)
     {

@@ -29,6 +29,7 @@ func Generate(s *Snapshot, language, packageName string) ([]byte, error) {
 from proto_contract import ContractClientInterceptor as _ContractClientInterceptor
 from proto_contract import ContractServerInterceptor as _ContractServerInterceptor
 from proto_contract import StrictServerInterceptor as _StrictServerInterceptor
+import grpc as _grpc
 
 API = %s
 VERSION = %s
@@ -51,6 +52,13 @@ class ServerInterceptor(_ContractServerInterceptor):
 
 def StrictServerInterceptor(exemptions=()):
     return _StrictServerInterceptor({SERVICE: ServerInterceptor()}, exemptions)
+
+def client(channel, stub_factory):
+    """Create a contract-bound protobuf stub; channel lifecycle stays with its owner."""
+    return stub_factory(_grpc.intercept_channel(channel, ClientInterceptor()))
+
+def add_to_server(builder, implementation, register):
+    return builder.add_service(implementation, register, ServerInterceptor())
 `, api, version, service)), nil
 	case "go":
 		if packageName == "" {
@@ -80,6 +88,16 @@ func Client() *protocontract.Client {
 func ClientInterceptor() grpc.UnaryClientInterceptor { return Client().Unary() }
 func ClientStreamInterceptor() grpc.StreamClientInterceptor { return Client().Stream() }
 
+// NewClient constructs a protobuf client with both unary and streaming protection.
+func NewClient[T any](conn grpc.ClientConnInterface, factory func(grpc.ClientConnInterface) T) T {
+  return factory(Client().Bind(conn))
+}
+
+// RegisterServer couples the protobuf registration with its generated contract.
+func RegisterServer(builder *protocontract.ServerBuilder, register func(grpc.ServiceRegistrar)) error {
+  return builder.Register(Server(), register)
+}
+
 // ServerInterceptor enforces this service's contract and leaves other services to their own interceptor.
 func Server() *protocontract.Server { server, err := protocontract.NewServer(API, Version, Service); if err != nil { panic(err) }; return server }
 func ServerInterceptor() grpc.UnaryServerInterceptor { return Server().Unary() }
@@ -101,6 +119,11 @@ import io.github.dunkymole.protocontract.ContractServerInterceptor;
 import io.github.dunkymole.protocontract.StrictServerInterceptor;
 import java.util.Map;
 import java.util.Set;
+import io.grpc.Channel;
+import io.grpc.ClientInterceptors;
+import io.grpc.BindableService;
+import io.github.dunkymole.protocontract.ContractServerBuilder;
+import java.util.function.Function;
 
 public final class Contract {
   public static final String API = %s;
@@ -111,6 +134,14 @@ public final class Contract {
 
   public static ContractClientInterceptor clientInterceptor() {
     return new ContractClientInterceptor(API, VERSION, SERVICE);
+  }
+
+  public static <T> T client(Channel channel, Function<Channel, T> factory) {
+    return factory.apply(ClientInterceptors.intercept(channel, clientInterceptor()));
+  }
+
+  public static ContractServerBuilder addService(ContractServerBuilder builder, BindableService implementation) {
+    return builder.addService(implementation, serverInterceptor());
   }
 
   public static ContractServerInterceptor serverInterceptor() {
@@ -140,6 +171,9 @@ public static class Contract
 
     public static global::ProtoContract.ContractClientInterceptor ClientInterceptor() =>
         new global::ProtoContract.ContractClientInterceptor(Api, Version, Service);
+
+    public static T CreateClient<T>(global::Grpc.Core.ChannelBase channel, global::System.Func<global::Grpc.Core.CallInvoker, T> factory) =>
+        factory(global::Grpc.Core.Interceptors.CallInvokerExtensions.Intercept(channel.CreateCallInvoker(), ClientInterceptor()));
 
     public sealed class ServerInterceptor : global::ProtoContract.ContractServerInterceptor
     {

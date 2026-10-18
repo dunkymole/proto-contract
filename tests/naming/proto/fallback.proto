@@ -1,0 +1,6 @@
+syntax = "proto3";
+package some_api.v2alpha.HTTP_api;
+option go_package = "example.test/naming/pb/fallback";
+message Request {}
+message Response {}
+service FallbackService { rpc Ping(Request) returns (Response); }

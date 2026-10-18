@@ -1,0 +1,7 @@
+syntax = "proto3";
+option go_package = "example.test/naming/pb/globalcase";
+option java_package = "com.example.globalcase";
+option csharp_namespace = "";
+message Request {}
+message Response {}
+service GlobalService { rpc Ping(Request) returns (Response); }

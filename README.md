@@ -109,7 +109,7 @@ Commit the reviewed lock, then generate each application's contract module from 
 
 Python, Go, Java, and .NET have service-scoped client interceptors and strict native server dispatchers that reject incompatible calls or unknown services before application logic runs, for all [four RPC shapes](docs/RUNTIMES.md#rpc-coverage).
 
-**Generate both client and server contracts from their build's lock files.** Run `proto-contract check` against the proto, then `generate` alongside protobuf generation. Python, Go, Java, and .NET modules expose both client and server interceptors with no API or version arguments. Regenerate when that build's lock changes. Client and server builds may use different lock versions; neither should obtain its version from the other at runtime. Outputs use this repository's corresponding [runtime adapters](runtimes/); the TypeScript grpc-bridge client imports Connect directly. Keep each service's generated contract in its own module or package and register its matching interceptor.
+**Generate both client and server contracts from their build's lock files.** Run `proto-contract check` against the proto, then `generate` alongside protobuf generation. Python, Go, Java, and .NET modules expose both client and server interceptors with no API or version arguments. Regenerate when that build's lock changes. Client and server builds may use different lock versions; neither should obtain its version from the other at runtime. Outputs use this repository's corresponding [runtime adapters](runtimes/); the TypeScript grpc-bridge client imports Connect directly. Keep each service's generated contract in its own module or package. Use the combined client and server registration helpers below; they install the matching interceptors automatically.
 
 The client and server snippets below represent separate applications, each using code generated from its own lock. All Docker example builds check the lock and generate their adapters before compilation.
 
@@ -129,7 +129,7 @@ protoc -I proto \
   demo/v1/echo.proto
 ```
 
-The bindings JSON uses named fields: `service`, `lock`, `output`, and, for TypeScript, `service_import` and `service_export`. Lock paths are relative to the JSON file. Output paths are portable paths relative to protoc's output root and cannot escape it. For native outputs, use `package` for the generated language package. Multiple service entries are sorted by service name; duplicate services and outputs are errors. The plugin checks every lock against the exact `CodeGeneratorRequest` descriptors and never rewrites a lock.
+The bindings JSON requires `service`, `lock`, and `output`. Native imports and service types are inferred from descriptors; `service_import` and `service_export` independently override relocated or custom bindings. TypeScript still requires both fields explicitly. Lock paths are relative to the JSON file. Output paths are portable paths relative to protoc's output root and cannot escape it. For native outputs, use `package` for the generated language package; .NET also supports `target` (`client`, `server`, or `both`). Multiple service entries are sorted by service name; duplicate services and outputs are errors. The plugin checks every lock against the exact `CodeGeneratorRequest` descriptors and never rewrites a lock. See [inference rules and exceptions](docs/RUNTIMES.md#bind-protobuf-types-at-generation-time).
 
 Applications create a typed client from the generated artifact, with no hand-written metadata interceptor:
 
@@ -157,7 +157,8 @@ Regenerate when the client's contract lock changes. The generated module embeds 
 ### Python
 
 ```sh
-proto-contract generate --lock contracts/demo.echo.json --lang python --out echo_contract.py
+proto-contract generate --lock contracts/demo.echo.json --lang python \
+  --proto proto/demo/v1/echo.proto --proto-path proto --out echo_contract.py
 ```
 
 Install the locally built `proto-contract-runtime` wheel as described in [package preparation](docs/PACKAGES.md):
@@ -165,22 +166,24 @@ Install the locally built `proto-contract-runtime` wheel as described in [packag
 ```python
 from concurrent import futures
 import grpc
-from echo_contract import ClientInterceptor, StrictServerInterceptor
+import echo_contract
+from proto_contract import ServerBuilder
 
-# Client: use this channel when constructing generated stubs.
-channel = grpc.intercept_channel(grpc.insecure_channel("localhost:50051"), ClientInterceptor())
+# Client: bind the generated contract and protobuf stub together.
+channel = grpc.insecure_channel("localhost:50051")
+client = echo_contract.client(channel)
 
 # Server: install strict dispatch globally. Unknown registered services fail closed.
-server = grpc.server(
-    futures.ThreadPoolExecutor(),
-    interceptors=(StrictServerInterceptor(),),
-)
+builder = ServerBuilder()
+echo_contract.add_to_server(builder, implementation)
+server = builder.build(futures.ThreadPoolExecutor())
 ```
 
 ### Go
 
 ```sh
 proto-contract generate --lock contracts/demo.echo.json --lang go --package echocontract \
+  --proto proto/demo/v1/echo.proto --proto-path proto \
   --out gen/go/contracts/echo/contract.go
 ```
 
@@ -189,7 +192,7 @@ import (
     "log"
 
     echocontract "github.com/dunkymole/proto-contract/gen/go/contracts/echo"
-    pb "github.com/dunkymole/proto-contract/gen/go/demo/v1"
+    "github.com/dunkymole/proto-contract/runtimes/go/protocontract"
     "google.golang.org/grpc"
     "google.golang.org/grpc/credentials/insecure"
 )
@@ -198,22 +201,18 @@ import (
 conn, err := grpc.NewClient(
     "localhost:50051",
     grpc.WithTransportCredentials(insecure.NewCredentials()),
-    grpc.WithUnaryInterceptor(echocontract.ClientInterceptor()),
-    grpc.WithStreamInterceptor(echocontract.ClientStreamInterceptor()),
 )
 if err != nil {
     log.Fatal(err)
 }
 
-// Server: strict dispatch must run globally and cover unary plus streams.
-strict, err := echocontract.StrictServer()
+client := echocontract.NewClient(conn)
+
+// Server: register the implementation and contract together.
+builder := protocontract.NewServerBuilder()
+if err := echocontract.RegisterServer(builder, implementation); err != nil { log.Fatal(err) }
+server, err := builder.Build() // Installs global unary and streaming enforcement.
 if err != nil { log.Fatal(err) }
-server := grpc.NewServer(
-    grpc.ChainUnaryInterceptor(strict.Unary()),
-    grpc.ChainStreamInterceptor(strict.Stream()),
-)
-pb.RegisterEchoServiceServer(server, implementation)
-if err := strict.ValidateRegisteredServices(server); err != nil { log.Fatal(err) }
 ```
 
 In your own module, change the `echocontract` import to your generated package's path. The generated file still imports the reusable Proto Contract runtime.
@@ -222,6 +221,7 @@ In your own module, change the `echocontract` import to your generated package's
 
 ```sh
 proto-contract generate --lock contracts/demo.echo.json --lang java \
+  --proto proto/demo/v1/echo.proto --proto-path proto \
   --package protocontract.generated.echo --out src/main/java/protocontract/generated/echo/Contract.java
 ```
 
@@ -231,42 +231,49 @@ Compile the generated `Contract.java` with the locally installed `io.github.dunk
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.ServerBuilder;
+import io.github.dunkymole.protocontract.ContractServerBuilder;
 import protocontract.generated.echo.Contract;
 
 // Client: construct the generated stub from this channel.
 ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
     .usePlaintext()
-    .intercept(Contract.clientInterceptor())
     .build();
+var client = Contract.blockingClient(channel);
 
 // Server: install one strict dispatcher globally; do not wrap only selected services.
-io.grpc.Server server = ServerBuilder.forPort(50051)
-    .addService(new EchoServiceImpl())
-    .intercept(Contract.strictServerInterceptor())
-    .build();
+var builder = new ContractServerBuilder(ServerBuilder.forPort(50051));
+Contract.addService(builder, new EchoServiceImpl());
+io.grpc.Server server = builder.build();
 ```
 
 ### .NET
 
 ```sh
 proto-contract generate --lock contracts/demo.echo.json --lang dotnet \
+  --proto proto/demo/v1/echo.proto --proto-path proto --target client \
   --package ProtoContract.Generated.Echo --out Generated/Contract.cs
 ```
 
 Include the generated source and add the locally built `ProtoContract.Runtime` NuGet package to your project:
 
+For the server build, generate with `--target server` and reference
+`ProtoContract.AspNetCore`. Use `--target both` when one project generates both
+protobuf client and server types and includes the server integration package.
+
 ```csharp
-using Grpc.Core.Interceptors;
+using ProtoContract;
 using Grpc.Net.Client;
 using EchoContract = ProtoContract.Generated.Echo.Contract;
 
-// Client: construct the generated client from this invoker.
+// Client: construct the protobuf client with its contract already attached.
 using var channel = GrpcChannel.ForAddress("https://api.example.com");
-var invoker = channel.Intercept(EchoContract.ClientInterceptor());
+var client = EchoContract.CreateClient(channel);
 
 // ASP.NET Core server: install fail-closed dispatch globally for every mapped service.
-builder.Services.AddSingleton(EchoContract.StrictServerInterceptor());
-builder.Services.AddGrpc(options => options.Interceptors.Add<ProtoContract.StrictServerInterceptor>());
+// Servers additionally reference ProtoContract.AspNetCore.
+builder.Services.AddContractGrpc();
+var app = builder.Build();
+EchoContract.MapService<EchoServiceImpl>(app);
 ```
 
 The demo source contains complete runnable services and clients. See [runtime integration](docs/RUNTIMES.md) for behavior and dependency details.

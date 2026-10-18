@@ -4,7 +4,8 @@
       "service": "demo.v1.EchoService",
       "lock": "demo.echo.json",
       "output": "generated/go/contract.go",
-      "package": "echocontract"
+      "package": "echocontract",
+      "service_import": "starter.local/demo/gen/go/demo/v1"
     }
   ]
 }

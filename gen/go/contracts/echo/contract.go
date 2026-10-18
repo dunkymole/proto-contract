@@ -2,6 +2,7 @@
 package echocontract
 
 import (
+	pb "github.com/dunkymole/proto-contract/gen/go/demo/v1"
 	"github.com/dunkymole/proto-contract/runtimes/go/protocontract"
 	"google.golang.org/grpc"
 )
@@ -21,6 +22,16 @@ func Client() *protocontract.Client {
 func ClientInterceptor() grpc.UnaryClientInterceptor        { return Client().Unary() }
 func ClientStreamInterceptor() grpc.StreamClientInterceptor { return Client().Stream() }
 
+// NewClient constructs a protobuf client with both unary and streaming protection.
+func NewClientWithFactory[T any](conn grpc.ClientConnInterface, factory func(grpc.ClientConnInterface) T) T {
+	return factory(Client().Bind(conn))
+}
+
+// RegisterServer couples the protobuf registration with its generated contract.
+func RegisterServerWithCallback(builder *protocontract.ServerBuilder, register func(grpc.ServiceRegistrar)) error {
+	return builder.Register(Server(), register)
+}
+
 // ServerInterceptor enforces this service's contract and leaves other services to their own interceptor.
 func Server() *protocontract.Server {
 	server, err := protocontract.NewServer(API, Version, Service)
@@ -33,4 +44,11 @@ func ServerInterceptor() grpc.UnaryServerInterceptor        { return Server().Un
 func ServerStreamInterceptor() grpc.StreamServerInterceptor { return Server().Stream() }
 func StrictServer(exemptions ...string) (*protocontract.StrictServer, error) {
 	return protocontract.NewStrictServer(map[string]*protocontract.Server{Service: Server()}, exemptions)
+}
+
+func NewClient(conn grpc.ClientConnInterface) pb.EchoServiceClient {
+	return pb.NewEchoServiceClient(Client().Bind(conn))
+}
+func RegisterServer(builder *protocontract.ServerBuilder, implementation pb.EchoServiceServer) error {
+	return builder.Register(Server(), func(r grpc.ServiceRegistrar) { pb.RegisterEchoServiceServer(r, implementation) })
 }

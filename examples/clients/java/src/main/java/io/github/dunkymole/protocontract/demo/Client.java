@@ -59,11 +59,11 @@ public final class Client {
     }
   }
 
-  private static void callStreams(String target, ClientInterceptor interceptor) {
+  private static void callStreams(String target) {
     ManagedChannel channel = ManagedChannelBuilder.forTarget("dns:///" + target).usePlaintext().build();
     try {
       EchoRequest request = EchoRequest.newBuilder().setText("stream").setRequestId("demo").build();
-      EchoServiceGrpc.EchoServiceStub stub = EchoServiceGrpc.newStub(channel).withInterceptors(interceptor).withDeadlineAfter(15, TimeUnit.SECONDS);
+      EchoServiceGrpc.EchoServiceStub stub = Contract.client(channel).withDeadlineAfter(15, TimeUnit.SECONDS);
       Collector clientResponse = new Collector();
       StreamObserver<EchoRequest> clientInput = stub.echoClientStream(clientResponse);
       clientInput.onNext(request); clientInput.onCompleted();
@@ -81,8 +81,9 @@ public final class Client {
   private static EchoResponse call(String target, ClientInterceptor interceptor) {
     ManagedChannel channel = ManagedChannelBuilder.forTarget("dns:///" + target).usePlaintext().build();
     try {
-      EchoServiceGrpc.EchoServiceBlockingStub stub = EchoServiceGrpc.newBlockingStub(channel)
-          .withInterceptors(interceptor).withDeadlineAfter(90, TimeUnit.SECONDS);
+      EchoServiceGrpc.EchoServiceBlockingStub stub = (interceptor == null
+          ? Contract.blockingClient(channel)
+          : EchoServiceGrpc.newBlockingStub(channel).withInterceptors(interceptor)).withDeadlineAfter(90, TimeUnit.SECONDS);
       return stub.echo(EchoRequest.newBuilder().setText("hello").setRequestId("demo").build());
     } finally { channel.shutdownNow(); }
   }
@@ -103,9 +104,9 @@ public final class Client {
     verifyContractVectors();
     Map<String,String> servers = Map.of("Go","go-server:50051","Java","java-server:50053",".NET","dotnet-server:50054","Python","python-server:50055");
     servers.forEach((expected,target) -> {
-      EchoResponse response = call(target, Contract.clientInterceptor());
+      EchoResponse response = call(target, null);
       if (!response.getText().equals("hello") || !response.getServerLanguage().equals(expected)) throw new AssertionError(response);
-      callStreams(target, Contract.clientInterceptor());
+      callStreams(target);
       for (String rejected : new String[]{"1.2.0","2.0.0"}) try { call(target, new ContractClientInterceptor("demo.echo", rejected)); throw new AssertionError(expected+" accepted "+rejected); }
       catch (StatusRuntimeException error) { if (error.getStatus().getCode()!=Status.Code.FAILED_PRECONDITION) throw error; }
       System.out.println("PASS Java client -> "+expected+" server");

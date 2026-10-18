@@ -4,6 +4,8 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 ## Unreleased
 
+- Contract-bound native client factories and typed server registration with global fail-closed enforcement, descriptor-based binding inference, independent overrides, naming conformance tests, and ASP.NET Core integration.
+
 - Manual release preparation workflow with downloadable package assets, SHA-256 checksums and optional unpublished GitHub draft Releases.
 - Unpublished Python, Java, .NET, and Go runtime artifacts with license metadata, checksums, package-based interoperability tests, and a clean Python starter.
 - Initial contract compiler with deterministic reachable-graph locks.

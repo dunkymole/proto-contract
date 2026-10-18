@@ -29,6 +29,7 @@ def prepare(packages, destination):
         f'python/proto_contract_runtime-{version}-py3-none-any.whl',
         f'python/proto_contract_runtime-{version}.tar.gz',
         f'dotnet/ProtoContract.Runtime.{version}.nupkg',
+        f'dotnet/ProtoContract.AspNetCore.{version}.nupkg',
         'java/pom.xml',
         *[f'java/proto-contract-runtime-{version}{suffix}.jar'
           for suffix in ('', '-sources', '-javadoc')],

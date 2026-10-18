@@ -129,6 +129,39 @@ func TestPluginUsesNativeLanguageGenerators(t *testing.T) {
 	}
 }
 
+func TestNativeTypedPluginStillRejectsStaleDescriptors(t *testing.T) {
+	tmp := t.TempDir()
+	set := generatorFixture()
+	lock, err := Build(set, "orders.v1.OrdersService", "orders", "1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Write(filepath.Join(tmp, "orders.json"), lock); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(tmp, "bindings.json")
+	config := `{"bindings":[{"service":"orders.v1.OrdersService","lock":"orders.json","output":"gen/contract","service_import":"example.pb","service_export":"OrdersService"}]}`
+	if err := os.WriteFile(path, []byte(config), 0600); err != nil {
+		t.Fatal(err)
+	}
+	req := &pluginpb.CodeGeneratorRequest{FileToGenerate: []string{"fixture.proto"}, ProtoFile: set.File}
+	for _, language := range []string{"go", "python", "java", "dotnet"} {
+		first, err := GeneratePluginResponse(req, language, path)
+		if err != nil {
+			t.Fatalf("%s: %v", language, err)
+		}
+		second, err := GeneratePluginResponse(req, language, path)
+		if err != nil || !proto.Equal(first, second) {
+			t.Fatalf("%s: nondeterministic output", language)
+		}
+		changed := proto.Clone(req).(*pluginpb.CodeGeneratorRequest)
+		changed.ProtoFile[0].MessageType[0].Field[0].Name = proto.String("renamed")
+		if _, err := GeneratePluginResponse(changed, language, path); err == nil || !strings.Contains(err.Error(), "stale") {
+			t.Fatalf("%s accepted stale descriptors: %v", language, err)
+		}
+	}
+}
+
 func generatorFixture() *descriptorpb.FileDescriptorSet {
 	labelOptional := descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL
 	fieldTypeFloat := descriptorpb.FieldDescriptorProto_TYPE_FLOAT
@@ -139,6 +172,7 @@ func generatorFixture() *descriptorpb.FileDescriptorSet {
 	modeName, stateName := "MODE", "State"
 	return &descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{{
 		Name: proto.String("fixture.proto"), Package: proto.String("orders.v1"), Syntax: proto.String("proto2"),
+		Options: &descriptorpb.FileOptions{GoPackage: proto.String("example.test/orders/v1;ordersv1")},
 		EnumType: []*descriptorpb.EnumDescriptorProto{
 			{Name: &modeName, Value: []*descriptorpb.EnumValueDescriptorProto{{Name: proto.String("MODE_ZERO"), Number: proto.Int32(0)}, {Name: proto.String("OTHER"), Number: proto.Int32(1)}}},
 			{Name: &stateName, Value: []*descriptorpb.EnumValueDescriptorProto{{Name: proto.String("STATE_ZERO"), Number: proto.Int32(0)}, {Name: proto.String("STATE_ONE"), Number: proto.Int32(1)}}},

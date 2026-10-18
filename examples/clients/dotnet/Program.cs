@@ -44,18 +44,19 @@ void VerifyBlockingUnaryInterceptor()
 }
 VerifyBlockingUnaryInterceptor();
 
-async Task<EchoResponse> Call(string target, Interceptor interceptor)
+async Task<EchoResponse> Call(string target, Interceptor? interceptor = null)
 {
     using var channel = GrpcChannel.ForAddress("http://" + target);
-    var invoker = channel.Intercept(interceptor);
-    var client = new EchoService.EchoServiceClient(invoker);
+    var client = interceptor is null
+        ? EchoContract.CreateClient(channel)
+        : new EchoService.EchoServiceClient(channel.Intercept(interceptor));
     return await client.EchoAsync(new EchoRequest { Text = "hello", RequestId = "demo" }, deadline: DateTime.UtcNow.AddSeconds(90));
 }
 
 async Task CallStreams(string target)
 {
     using var channel = GrpcChannel.ForAddress("http://" + target);
-    var client = new EchoService.EchoServiceClient(channel.Intercept(EchoContract.ClientInterceptor()));
+    var client = EchoContract.CreateClient(channel);
     var request = new EchoRequest { Text = "stream", RequestId = "demo" };
     using (var call = client.EchoClientStream(deadline: DateTime.UtcNow.AddSeconds(10)))
     {
@@ -103,7 +104,7 @@ async Task VerifyDotnetStrictCoverage(string target)
 
 foreach (var (expected,target) in servers)
 {
-    var response = await Call(target, EchoContract.ClientInterceptor());
+    var response = await Call(target);
     if (response.Text != "hello" || response.ServerLanguage != expected) throw new Exception($"Unexpected response from {expected}");
     await CallStreams(target);
     await ExpectStreamingRejected(target, new ContractClientInterceptor("demo.echo", "1.2.0", EchoContract.Service));
