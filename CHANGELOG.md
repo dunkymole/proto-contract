@@ -2,7 +2,7 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
-## Unreleased
+## 0.3.0 (unreleased)
 
 - Contract-bound native client factories and typed server registration with global fail-closed enforcement, descriptor-based binding inference, independent overrides, naming conformance tests, and ASP.NET Core integration.
 

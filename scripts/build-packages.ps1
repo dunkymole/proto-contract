@@ -25,7 +25,7 @@ try {
     $manifest = @{
         sourceRevision = (git rev-parse HEAD)
         sourceHasChanges = [bool](git status --porcelain)
-        adapterVersion = '0.2.1'
+        adapterVersion = '0.3.0'
         artifacts = @($files)
     }
     $manifest | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/packages/manifest.json

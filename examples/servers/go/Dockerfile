@@ -17,7 +17,7 @@ WORKDIR /src
 COPY artifacts/packages/go /packages/go
 ENV GOPROXY=file:///packages/go,https://proxy.golang.org
 ENV GONOSUMDB=github.com/dunkymole/proto-contract
-RUN go mod init starter.local/demo && go mod edit -require=github.com/dunkymole/proto-contract@v0.2.1
+RUN go mod init starter.local/demo && go mod edit -require=github.com/dunkymole/proto-contract@v0.3.0
 COPY gen gen
 COPY examples/servers/go examples/servers/go
 COPY --from=contract-codegen /src/generated/go/contract.go gen/go/contracts/echo/contract.go

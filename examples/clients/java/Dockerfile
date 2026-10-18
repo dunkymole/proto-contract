@@ -16,7 +16,7 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /src
 COPY examples/clients/java/pom.xml .
 COPY artifacts/packages/java /packages
-RUN mvn -q install:install-file -Dfile=/packages/proto-contract-runtime-0.2.1.jar -DpomFile=/packages/pom.xml
+RUN mvn -q install:install-file -Dfile=/packages/proto-contract-runtime-0.3.0.jar -DpomFile=/packages/pom.xml
 RUN mvn -q dependency:go-offline
 COPY proto/demo/v1/echo.proto proto/demo/v1/echo.proto
 
@@ -25,6 +25,6 @@ COPY runtimes/contract-vectors.json /contract-vectors.json
 COPY --from=contract-codegen /src/generated/java/Contract.java src/main/java/protocontract/generated/echo/Contract.java
 RUN mvn -q package -DskipTests
 FROM eclipse-temurin:21-jre
-COPY --from=build /src/target/proto-contract-client-demo-0.2.1.jar /client.jar
+COPY --from=build /src/target/proto-contract-client-demo-0.3.0.jar /client.jar
 COPY --from=build /contract-vectors.json /contract-vectors.json
 ENTRYPOINT ["java","-jar","/client.jar"]
