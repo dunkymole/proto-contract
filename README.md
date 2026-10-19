@@ -300,7 +300,7 @@ Proto Contract is independent of application release versions and authentication
 
 ## Project status
 
-This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The roadmap includes published language packages and CI integrations.
+This is an early 0.x project. The lock format is versioned but has not reached a stability guarantee. Runtime packages are available through GitHub Releases, and CI checks contract locks, release history and cross-language interoperability. The roadmap includes custom-option and edition support and additional language integrations.
 
 ## Contributing and security
 
