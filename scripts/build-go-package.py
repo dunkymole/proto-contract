@@ -12,6 +12,7 @@ files = [root / 'go.mod', root / 'go.sum', root / 'LICENSE', root / 'README.md',
          root / 'runtimes/contract-vectors.json', root / 'contracts/demo.echo.json']
 for directory in ('cmd', 'internal', 'runtimes/go'):
     files.extend(sorted((root / directory).rglob('*.go')))
+files.extend(sorted((root / 'internal').rglob('*.proto')))
 files.extend(sorted((root / 'gen/go').rglob('*.go')))
 with zipfile.ZipFile(out / f'{version}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
     for file in sorted(files):

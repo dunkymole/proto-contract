@@ -45,6 +45,16 @@ jobs:
       - name: Vet compiler and validator
         run: go vet ./...
 
+      - name: Test custom options with source retention
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/protocolbuffers/protobuf/releases/download/v33.0/protoc-33.0-linux-x86_64.zip \
+            --output "$RUNNER_TEMP/protoc.zip"
+          echo "d99c011b799e9e412064244f0be417e5d76c9b6ace13a2ac735330fa7d57ad8f  $RUNNER_TEMP/protoc.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          PATH="$RUNNER_TEMP/protoc/bin:$PATH" go test ./internal/contract -run '^TestProtoc' -count=1 -v
+          PATH="$RUNNER_TEMP/protoc/bin:$PATH" bash scripts/test-custom-options.sh
+
       - name: Check reachable Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 

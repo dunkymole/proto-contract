@@ -1,0 +1,32 @@
+syntax = "proto3";
+package annotated;
+import "policy.proto";
+option go_package = "example.test/annotated";
+option (policy.audience) = "public";
+service API {
+  option (policy.authenticated) = true;
+  rpc Get(Request) returns (Request) {
+    option (policy.http) = {
+      get: "/v1/items/{name}"
+      additional_bindings: { post: "/v1/items:lookup" body: "*" }
+    };
+  }
+}
+message Request {
+  option (policy.category) = "request";
+  string name = 1 [(policy.rules) = {
+    min_length: 1 allowed: "a" allowed: "b" mode: STRICT
+    limits: { key: "max" value: 100 }
+    limits: { key: "min" value: 1 }
+  }];
+  oneof selector {
+    option (policy.required) = true;
+    string id = 2;
+  }
+  State state = 3;
+}
+enum State {
+  option (policy.enum_note) = "lifecycle";
+  UNKNOWN = 0 [(policy.value_note) = "unset"];
+  READY = 1;
+}

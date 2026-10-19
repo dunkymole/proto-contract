@@ -151,3 +151,12 @@ Use numeric `MAJOR.MINOR.PATCH` versions (no prerelease/build suffixes or leadin
 | A call returns `FAILED_PRECONDITION` | Check the API identity, the client's generated version, the server's generated version, and interceptor registration. Rebuild from the intended lock rather than overriding the header. |
 
 The classifier's exact scope and limitations are in [compatibility policy](COMPATIBILITY.md).
+
+Custom annotations require their defining `.proto` files and transitive imports
+under the import root (plus protoc's standard includes). `snapshot`, `check`,
+`update` and descriptor-based generation resolve them dynamically; no annotation
+Go package needs to be linked into the compiler. Locks retain checked definitions
+and values, so lock-only validation/generation needs no network or external schema
+registry. Every custom-option change conservatively requires a major API bump.
+See [custom-option scope](COMPATIBILITY.md#custom-options) before using validation
+or HTTP annotations. Editions remain unsupported.

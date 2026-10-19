@@ -13,7 +13,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
 )
 
 // MaxLockBytes bounds untrusted lock parsing before JSON decoding.
@@ -362,7 +364,12 @@ func Validate(s *Snapshot) error {
 			}
 		}
 	}
+	types, err := customTypes(s)
+	if err != nil {
+		return err
+	}
 	featureNames := map[string]bool{}
+	hasCustomOptions := false
 	for featureIndex, feature := range s.Features {
 		if feature.Name == "" || featureNames[feature.Name] {
 			return fmt.Errorf("empty or duplicate descriptor feature %q", feature.Name)
@@ -371,9 +378,15 @@ func Validate(s *Snapshot) error {
 		if featureIndex > 0 && s.Features[featureIndex-1].Name >= feature.Name {
 			return fmt.Errorf("descriptor features are not in canonical name order")
 		}
-		if err := validateFeature(s, feature); err != nil {
+		if strings.HasPrefix(feature.Name, "custom-") && feature.Name != customDefinitions {
+			hasCustomOptions = true
+		}
+		if err := validateFeature(s, feature, types); err != nil {
 			return err
 		}
+	}
+	if types != nil && !hasCustomOptions {
+		return fmt.Errorf("custom option definitions without option values")
 	}
 	for _, enum := range s.Enums {
 		numbers := map[int32]bool{}
@@ -439,12 +452,22 @@ func validateDefault(field Field) error {
 	return err
 }
 
-func validateFeature(snapshot *Snapshot, feature Feature) error {
+func validateFeature(snapshot *Snapshot, feature Feature, types *dynamicpb.Types) error {
+	if feature.Name == customDefinitions {
+		return nil // Fully checked by customTypes before individual option values.
+	}
 	separator := strings.IndexByte(feature.Name, ':')
 	if separator <= 0 || separator == len(feature.Name)-1 {
 		return fmt.Errorf("invalid descriptor feature name %q", feature.Name)
 	}
 	kind, owner := feature.Name[:separator], feature.Name[separator+1:]
+	custom := strings.HasPrefix(kind, "custom-")
+	if custom {
+		kind = strings.TrimPrefix(kind, "custom-")
+		if types == nil || !strings.HasSuffix(kind, "-options") {
+			return fmt.Errorf("custom option feature %q requires checked definitions and an options owner", feature.Name)
+		}
+	}
 	var message proto.Message
 	switch kind {
 	case "file-options":
@@ -551,14 +574,30 @@ func validateFeature(snapshot *Snapshot, feature Feature) error {
 	if err != nil || hex.EncodeToString(encoded) != feature.Value {
 		return fmt.Errorf("descriptor feature %q is not canonical hex", feature.Name)
 	}
-	if err := proto.Unmarshal(encoded, message); err != nil {
+	unmarshal := proto.UnmarshalOptions{RecursionLimit: 100}
+	if custom {
+		unmarshal.Resolver = types
+	}
+	if err := unmarshal.Unmarshal(encoded, message); err != nil {
 		return fmt.Errorf("invalid descriptor feature %q: %w", feature.Name, err)
 	}
-	if len(message.ProtoReflect().GetUnknown()) != 0 {
-		return fmt.Errorf("unsupported unknown data in descriptor feature %q", feature.Name)
+	if err := checkOptionMessage(message.ProtoReflect(), 0); err != nil {
+		return fmt.Errorf("descriptor feature %q: %w", feature.Name, err)
 	}
-	if field := message.ProtoReflect().Descriptor().Fields().ByName("uninterpreted_option"); field != nil && message.ProtoReflect().Has(field) && message.ProtoReflect().Get(field).List().Len() > 0 {
-		return fmt.Errorf("unsupported uninterpreted option in descriptor feature %q", feature.Name)
+	if custom {
+		count := 0
+		onlyExtensions := true
+		message.ProtoReflect().Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+			if f.IsExtension() {
+				count++
+			} else {
+				onlyExtensions = false
+			}
+			return true
+		})
+		if count == 0 || !onlyExtensions {
+			return fmt.Errorf("custom option feature %q must contain only extension values", feature.Name)
+		}
 	}
 	canonical, err := (proto.MarshalOptions{Deterministic: true}).Marshal(message)
 	if err != nil || !bytes.Equal(canonical, encoded) {

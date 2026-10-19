@@ -1,0 +1,28 @@
+syntax = "proto2";
+package policy;
+import "google/protobuf/descriptor.proto";
+
+message Rules {
+  enum Mode { DEFAULT = 0; STRICT = 1; }
+  optional int32 min_length = 1;
+  repeated string allowed = 2;
+  optional bool required = 3;
+  optional Mode mode = 4;
+  map<string, int32> limits = 5;
+}
+message HttpRule {
+  oneof pattern {
+    string get = 1;
+    string post = 2;
+  }
+  optional string body = 3;
+  repeated HttpRule additional_bindings = 4;
+}
+extend google.protobuf.FieldOptions { optional Rules rules = 50001; }
+extend google.protobuf.MethodOptions { optional HttpRule http = 50002; }
+extend google.protobuf.FileOptions { optional string audience = 50003; }
+extend google.protobuf.ServiceOptions { optional bool authenticated = 50004; }
+extend google.protobuf.MessageOptions { optional string category = 50005; }
+extend google.protobuf.OneofOptions { optional bool required = 50006; }
+extend google.protobuf.EnumOptions { optional string enum_note = 50007; }
+extend google.protobuf.EnumValueOptions { optional string value_note = 50008; }

@@ -34,7 +34,48 @@ The metadata parser is shared across runtimes: the API is 1–64 ASCII character
 
 Field comparison also includes label, referenced type, JSON name, oneof membership, proto3 optional presence, and explicit default values. Default changes require a major bump. Enum values are keyed by name, so aliases sharing a number remain distinct and removing, renaming, or reordering aliases requires a major bump. The default enum name and alias order for each numeric value are captured because they affect implicit values and canonical JSON names. Field and distinct-number enum declaration order is normalized. The digest excludes the lock's version; it identifies the captured structure rather than the application release.
 
-Format 2 supports proto2 and proto3 declarations reachable from the selected service, including field defaults, enum aliases, streaming shape, oneofs, proto3 optional fields, reserved declarations, and deterministic fingerprints of standard descriptor options. Option or reserved declaration changes are conservatively major. Custom or unrecognized options and uninterpreted options are rejected until their extension definitions can be checked. Edition syntax, groups, and extensions that affect reachable declarations are also rejected with an actionable unsupported-feature error. Unrelated declarations in imported files do not affect the snapshot.
+Format 2 supports proto2 and proto3 declarations reachable from the selected service, including field defaults, enum aliases, streaming shape, oneofs, proto3 optional fields, reserved declarations, and deterministic fingerprints of standard descriptor options. Option or reserved declaration changes are conservatively major. Resolvable custom options are supported as described below; unknown or uninterpreted options still fail closed. Edition syntax, groups, and data-message extensions that affect reachable declarations remain unsupported. Unrelated declarations do not affect the service graph; custom-option definition files have the broader fingerprint scope described below.
+
+## Custom options
+
+Custom options on the selected service, its methods, reachable messages, fields,
+oneofs, enums, enum values and owning files are supported when the full imported
+extension definitions are available. This includes scalar, repeated, enum and
+message-valued annotations such as validation rules and HTTP bindings. Nested
+message values, maps and extension values are decoded against those definitions;
+unknown fields, undefined enum numbers, malformed values, missing imports and
+uninterpreted options are rejected. Group-valued annotations are unsupported.
+
+Every custom-option addition, removal or value change requires a **major** API
+contract bump, including options on newly added declarations. This first increment
+does not infer whether a validation constraint was relaxed or an HTTP route is
+backward compatible. Applications still implement annotation behavior: runtime
+adapters enforce contract versions, not validation rules or HTTP transcoding.
+
+The lock retains deterministic option values separately from standard options,
+plus a canonical descriptor set for the defining files and their transitive
+imports. Source locations/comments are excluded and descriptor files are sorted.
+The complete definition-file closure is fingerprinted conservatively: changes to
+other declarations or generator options in those files can also require a major
+bump. Definition changes and removal of definition data are major even when the
+encoded option value stays the same. This avoids guessing which external rule
+semantics affect application behavior. Very large annotation dependencies can
+reach the existing 4 MiB lock limit; they fail rather than dropping definitions.
+
+No new lock format number or runtime metadata is introduced. Existing locks
+without custom annotations retain their digests. Locks using these new feature
+kinds require a compiler containing this support; v0.3.0 and earlier reject them.
+
+CLI descriptor compilation and plugin generation check the same definitions and
+values. The plugin uses `source_file_descriptors` when protoc supplies source-only
+annotations. TypeScript generation checks these annotations against the full lock
+at build time; Protobuf-ES's runtime graph remains a structural projection and
+does not revalidate custom annotations at runtime. Native generated bindings also
+carry the checked API version rather than evaluating annotations on each call.
+
+Protobuf editions and inherited edition features remain a separate increment of
+[#1](https://github.com/dunkymole/proto-contract/issues/1), with the existing
+unsupported-feature errors retained.
 
 The policy is intentionally stricter than protobuf wire compatibility because generated source compatibility matters to application developers.
 
