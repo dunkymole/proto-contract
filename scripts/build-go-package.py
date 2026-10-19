@@ -5,7 +5,7 @@ import zipfile
 
 root = pathlib.Path('/source')
 module = 'github.com/dunkymole/proto-contract'
-version = 'v0.2.1'
+version = 'v0.3.0'
 out = pathlib.Path('/packages/go') / module / '@v'
 out.mkdir(parents=True, exist_ok=True)
 files = [root / 'go.mod', root / 'go.sum', root / 'LICENSE', root / 'README.md',

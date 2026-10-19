@@ -2,8 +2,9 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
-## Unreleased
+## 0.3.0 (unreleased)
 
+- Upgrade the Go build baseline to 1.27.2, require Go 1.26.9+, update gRPC-Go and x/net to patched releases, and gate CI/release preparation on reachable vulnerability scans.
 - Contract-bound native client factories and typed server registration with global fail-closed enforcement, descriptor-based binding inference, independent overrides, naming conformance tests, and ASP.NET Core integration.
 
 - Manual release preparation workflow with downloadable package assets, SHA-256 checksums and optional unpublished GitHub draft Releases.

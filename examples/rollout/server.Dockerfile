@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm AS contract-plugin-build
+FROM golang:1.27.2-bookworm AS contract-plugin-build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

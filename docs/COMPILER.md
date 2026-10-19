@@ -6,7 +6,7 @@ Run commands from the repository root unless a command uses paths from your own 
 
 ### Local installation
 
-Use Go 1.24 or newer to build the CLI from this checkout:
+Use Go 1.27.2 or newer to build the CLI from this checkout:
 
 ```sh
 go install ./cmd/proto-contract

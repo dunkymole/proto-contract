@@ -2,7 +2,7 @@
 
 Client metadata and strict server enforcement for gRPC. Generate service-specific bindings with the Proto Contract compiler. See https://github.com/dunkymole/proto-contract/blob/main/docs/PACKAGES.md for installation and compatibility policy.
 
-Package version 0.2.1 is independent of your API contract version.
+Package version 0.3.0 is independent of your API contract version.
 
 Use generated `contract.client(channel)` to construct a protected client.
 Create `proto_contract.ServerBuilder()`, call generated

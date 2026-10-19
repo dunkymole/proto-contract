@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm AS codegen
+FROM golang:1.27.2-bookworm AS codegen
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

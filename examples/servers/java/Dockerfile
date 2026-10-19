@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm AS contract-codegen
+FROM golang:1.27.2-bookworm AS contract-codegen
 WORKDIR /src
 RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler && rm -rf /var/lib/apt/lists/*
 COPY go.mod go.sum ./
@@ -16,7 +16,7 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /src
 COPY examples/servers/java/pom.xml .
 COPY artifacts/packages/java /packages
-RUN mvn -q install:install-file -Dfile=/packages/proto-contract-runtime-0.2.1.jar -DpomFile=/packages/pom.xml
+RUN mvn -q install:install-file -Dfile=/packages/proto-contract-runtime-0.3.0.jar -DpomFile=/packages/pom.xml
 RUN mvn -q dependency:go-offline
 COPY proto/demo/v1/echo.proto proto/demo/v1/echo.proto
 
@@ -24,6 +24,6 @@ COPY examples/servers/java/src/main/java src/main/java
 COPY --from=contract-codegen /src/generated/java/Contract.java src/main/java/protocontract/generated/echo/Contract.java
 RUN mvn -q package -DskipTests
 FROM eclipse-temurin:21-jre
-COPY --from=build /src/target/proto-contract-server-demo-0.2.1.jar /server.jar
+COPY --from=build /src/target/proto-contract-server-demo-0.3.0.jar /server.jar
 EXPOSE 50053
 ENTRYPOINT ["java","-jar","/server.jar"]

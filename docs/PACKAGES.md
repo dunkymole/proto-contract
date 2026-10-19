@@ -1,12 +1,12 @@
 # Runtime packages (unpublished)
 
 These are proposed package coordinates. This repository builds them locally; no
-registry availability is implied. Package version `0.2.1` versions the adapter
+registry availability is implied. Package version `0.3.0` versions the adapter
 implementation, independently of the API version in each generated contract lock.
 
 | Language | Coordinate | Build/test baseline | Dependency policy |
 | --- | --- | --- | --- |
-| Go | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` | Go 1.24; module requires Go 1.22 | gRPC 1.71.0; normal Go minimal version selection |
+| Go | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` | Go 1.27.2; module requires Go 1.26.9+ | gRPC-Go 1.84.0, x/net 0.61.0; normal Go minimal version selection |
 | Python | `proto-contract-runtime` (import `proto_contract`) | Python 3.13; requires Python 3.10+ | grpcio >=1.71,<2 |
 | Java | `io.github.dunkymole:proto-contract-runtime` | JDK 21 build, Java 17 bytecode | grpc-api 1.71.0; Maven dependency mediation |
 | .NET | `ProtoContract.Runtime` (namespace `ProtoContract`) | .NET 9 SDK; targets net8.0 | Grpc.Core.Api >=2.71,<3 |
@@ -17,6 +17,12 @@ language/dependency combination has been tested. The matrix uses the baseline
 versions above. Compiler and adapter artifacts should initially use the same
 release version; any future independent releases must retain generated public
 API compatibility or document the required compiler upgrade.
+
+The Go minimum was raised for patched dependencies and standard-library fixes.
+Go 1.22–1.25 consumers must upgrade their toolchain before using v0.3.0. CI and
+release preparation run govulncheck v1.9.0 against the current vulnerability
+database and fail for reachable findings. A clean scan covers the analyzed Go
+source graph; it is not a security audit of every language package or deployment.
 
 ## Build and verify without publication
 
@@ -37,7 +43,7 @@ checks cover all four RPC shapes, invalid metadata, service isolation and strict
 dispatch. The Python server also runs its generated-server unit tests.
 
 The Go artifact uses the existing root module, preserving generated imports.
-It is an unpublished release candidate for `v0.2.1`. The existing `v0.1.0` and
+It is an unpublished release candidate for `v0.3.0`. The existing `v0.1.0` and
 `v0.2.0` releases and tags remain unchanged. The proxy archive contains
 the compiler, runtime and Go test fixtures. Consumer-generated bindings belong to
 the application's own module; the matrix uses a separate `starter.local/demo`
@@ -56,11 +62,11 @@ To install the local artifacts in your own project:
 
 ```sh
 python -m pip install artifacts/packages/python/*.whl
-mvn install:install-file -Dfile=artifacts/packages/java/proto-contract-runtime-0.2.1.jar -DpomFile=artifacts/packages/java/pom.xml
+mvn install:install-file -Dfile=artifacts/packages/java/proto-contract-runtime-0.3.0.jar -DpomFile=artifacts/packages/java/pom.xml
 dotnet nuget add source /absolute/path/to/artifacts/packages/dotnet --name proto-contract-local
-dotnet add package ProtoContract.Runtime --version 0.2.1
+dotnet add package ProtoContract.Runtime --version 0.3.0
 # ASP.NET Core servers also install:
-dotnet add package ProtoContract.AspNetCore --version 0.2.1
+dotnet add package ProtoContract.AspNetCore --version 0.3.0
 ```
 
 Keep NuGet.org enabled for the transitive gRPC dependency. The container examples
@@ -68,7 +74,7 @@ use `packaging/NuGet.Config` to map the runtime specifically to the local feed.
 
 For Go, use a fresh `GOMODCACHE`, set `GOPROXY=file:///absolute/path/to/artifacts/packages/go,https://proxy.golang.org`
 and `GONOSUMDB=github.com/dunkymole/proto-contract` in an isolated test environment,
-then `go get github.com/dunkymole/proto-contract@v0.2.1`. This bypass is only for
+then `go get github.com/dunkymole/proto-contract@v0.3.0`. This bypass is only for
 the unpublished local artifact; normal published consumption must use checksums.
 
 Generate each service binding from its build's checked lock, then follow
@@ -126,11 +132,17 @@ It also refuses an existing output directory: use `--out` with a fresh destinati
 for subsequent preparations. Checksums detect corrupted downloads; they are not
 cryptographic signatures or an independent proof of publisher identity.
 
-The prepared package version is **v0.2.1**; no new tag or Release has been created.
+The prepared package version is **v0.3.0**; no new tag or Release has been created.
+This minor release includes inferred native bindings, typed client factories,
+combined server registration and the ASP.NET Core integration package. Upgrade
+compiler and runtime packages together when regenerating these helpers; earlier
+runtimes do not provide their new builder APIs. The RPC metadata format and API
+contract compatibility policy are unchanged. This package bump does not require
+bumping application contract locks.
 For subsequent versions, update the Python/Java/.NET package metadata, Go proxy
 builder, consumer dependency versions, build manifest version and package
 verification fixtures together. Commit the tested source and create its matching
-`v0.2.1` tag only when release work is authorized. Run this workflow on that
+`v0.3.0` tag only when release work is authorized. Run this workflow on that
 exact tag with `create_draft=true`. The draft job alone receives `contents: write`;
 it checks the tag points to the workflow commit, verifies clean-source provenance
 and downloaded checksums, then creates an **unpublished draft** with the assets.
@@ -138,6 +150,9 @@ An existing release causes creation to fail; assets are never overwritten.
 
 Review the draft and its assets before publishing manually in GitHub. No workflow
 step publishes the draft, uploads to language registries, or creates/moves tags.
+Creating the public Git tag makes the Go module available independently of the
+GitHub Release's draft status. Review the prepare-only workflow's assets first,
+then create the tag only when Go publication is authorized.
 The Go proxy ZIP is a download/test convenience; normal `go get` users obtain the
 module through the matching repository tag. Installation from GitHub Release
 assets is different from publishing to PyPI, Maven Central or NuGet.org.
