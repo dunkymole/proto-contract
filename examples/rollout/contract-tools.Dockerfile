@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm
+FROM golang:1.27.2-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY go.mod go.sum ./

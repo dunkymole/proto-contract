@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm AS contract-codegen
+FROM golang:1.27.2-bookworm AS contract-codegen
 WORKDIR /src
 RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler && rm -rf /var/lib/apt/lists/*
 COPY go.mod go.sum ./

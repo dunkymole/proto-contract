@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm AS contract-codegen
+FROM golang:1.27.2-bookworm AS contract-codegen
 WORKDIR /src
 RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler && rm -rf /var/lib/apt/lists/*
 COPY go.mod go.sum ./
@@ -12,7 +12,7 @@ COPY scripts/generate-example-contracts.sh ./scripts/generate-example-contracts.
 RUN go build -o /proto-contract ./cmd/proto-contract && go build -o /protoc-gen-proto-contract ./cmd/protoc-gen-proto-contract
 RUN /proto-contract check --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --lock contracts/demo.echo.json && sh scripts/generate-example-contracts.sh go
 
-FROM golang:1.24-bookworm AS build
+FROM golang:1.27.2-bookworm AS build
 WORKDIR /src
 COPY artifacts/packages/go /packages/go
 ENV GOPROXY=file:///packages/go,https://proxy.golang.org

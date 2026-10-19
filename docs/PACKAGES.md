@@ -6,7 +6,7 @@ implementation, independently of the API version in each generated contract lock
 
 | Language | Coordinate | Build/test baseline | Dependency policy |
 | --- | --- | --- | --- |
-| Go | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` | Go 1.24; module requires Go 1.22 | gRPC 1.71.0; normal Go minimal version selection |
+| Go | `github.com/dunkymole/proto-contract/runtimes/go/protocontract` | Go 1.27.2; module requires Go 1.26.9+ | gRPC-Go 1.84.0, x/net 0.61.0; normal Go minimal version selection |
 | Python | `proto-contract-runtime` (import `proto_contract`) | Python 3.13; requires Python 3.10+ | grpcio >=1.71,<2 |
 | Java | `io.github.dunkymole:proto-contract-runtime` | JDK 21 build, Java 17 bytecode | grpc-api 1.71.0; Maven dependency mediation |
 | .NET | `ProtoContract.Runtime` (namespace `ProtoContract`) | .NET 9 SDK; targets net8.0 | Grpc.Core.Api >=2.71,<3 |
@@ -17,6 +17,12 @@ language/dependency combination has been tested. The matrix uses the baseline
 versions above. Compiler and adapter artifacts should initially use the same
 release version; any future independent releases must retain generated public
 API compatibility or document the required compiler upgrade.
+
+The Go minimum was raised for patched dependencies and standard-library fixes.
+Go 1.22–1.25 consumers must upgrade their toolchain before using v0.3.0. CI and
+release preparation run govulncheck v1.9.0 against the current vulnerability
+database and fail for reachable findings. A clean scan covers the analyzed Go
+source graph; it is not a security audit of every language package or deployment.
 
 ## Build and verify without publication
 

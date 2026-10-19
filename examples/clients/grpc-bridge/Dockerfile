@@ -7,7 +7,7 @@ RUN git init /bridge && cd /bridge && \
     git remote add origin "$GRPC_BRIDGE_REPOSITORY" && \
     git fetch --depth 1 origin "$GRPC_BRIDGE_REF" && git checkout --detach FETCH_HEAD
 
-FROM golang:1.25-alpine AS bridge-build
+FROM golang:1.27.2-alpine AS bridge-build
 WORKDIR /src
 COPY --from=source /bridge/go.mod ./
 COPY --from=source /bridge/cmd ./cmd
@@ -26,7 +26,7 @@ WORKDIR /bridge/web
 COPY --from=source /bridge/web ./
 RUN npm ci --no-audit --no-fund && npm pack --pack-destination /tmp
 
-FROM golang:1.24-alpine AS contract-build
+FROM golang:1.27.2-alpine AS contract-build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

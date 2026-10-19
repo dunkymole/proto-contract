@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm AS codegen
+FROM golang:1.27.2-bookworm AS codegen
 WORKDIR /src
 RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler python3 && rm -rf /var/lib/apt/lists/*
 COPY go.mod go.sum ./

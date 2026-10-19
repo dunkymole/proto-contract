@@ -9,12 +9,12 @@ Thank you for helping improve Proto Contract.
 
 ## Development setup
 
-The compiler uses Go (the repository selects a Go 1.24 toolchain). The complete demo needs Docker Compose v2 with Linux containers and PowerShell; its language toolchains run inside the containers. See [compiler setup](docs/COMPILER.md) for local `protoc` requirements and [runtime integration](docs/RUNTIMES.md) for each adapter's dependencies.
+The compiler uses Go (the repository selects a Go 1.27.2 toolchain). The complete demo needs Docker Compose v2 with Linux containers and PowerShell; its language toolchains run inside the containers. See [compiler setup](docs/COMPILER.md) for local `protoc` requirements and [runtime integration](docs/RUNTIMES.md) for each adapter's dependencies.
 
 Run checks from the repository root. A Docker-only Go test command is:
 
 ```powershell
-docker run --rm -v "${PWD}:/src" -w /src golang:1.24-bookworm go test ./...
+docker run --rm -v "${PWD}:/src" -w /src golang:1.27.2-bookworm go test ./...
 ```
 
 For a schema change, run `check`, review the calculated bump, and deliberately `update` the tracked lock. Generated contracts must derive from that lock on both clients and servers. Do not introduce handwritten API/version arguments into application examples; explicit mismatches belong only in compatibility tests.
