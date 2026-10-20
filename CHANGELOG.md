@@ -8,6 +8,8 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 - Add checked version updates, read-only candidate preparation, explicit promotion of tested artifacts, resumable publication and public-download/Go verification, with a next-version dry run.
 - Support the six core Edition 2023 features with canonical defaults and inheritance, fail-closed scope/value validation, matching CLI/plugin behavior, and runtime graph checks.
+- Reject ambiguous imported extension definitions before interpreting custom options.
+- Edition 2024 and language-specific edition features remain unsupported. Native protobuf bindings require edition-capable generators/runtimes; the standard cross-language matrix continues to use proto3.
 
 ## 0.4.0 (2026-10-20)
 
