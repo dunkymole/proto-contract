@@ -217,7 +217,9 @@ def release_notes(v, commit):
 
 {section[1].strip()}
 
-Source: `{commit}`. Check `SHA256SUMS` before installing the downloaded packages.
+Source: `{commit}`. Download all attached release assets, including `manifest.json`,
+`candidate.json`, `RELEASE_NOTES.md` and `SHA256SUMS`, into one directory. Run
+`sha256sum --check SHA256SUMS` there before installing the packages you need.
 Package versions are independent of application API contract versions.
 See [installation](https://github.com/{REPO}/blob/v{v}/docs/PACKAGES.md) and
 [compatibility limits](https://github.com/{REPO}/blob/v{v}/docs/COMPATIBILITY.md).
