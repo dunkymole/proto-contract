@@ -27,7 +27,8 @@ source graph; it is not a security audit of every language package or deployment
 
 This release adds the [core Edition 2023 compiler features](COMPATIBILITY.md#protobuf-edition-2023). Use an edition-capable protoc (CI tests protoc 33) and edition-capable native protobuf generators/runtimes when compiling edition schemas. The native interoperability examples still use proto3; TypeScript also has a genuine Edition 2023 runtime-graph test.
 
-Download the packages, `manifest.json` and `SHA256SUMS` from the
+Download all attached assets, including the packages, `manifest.json`,
+`candidate.json`, `RELEASE_NOTES.md` and `SHA256SUMS`, from the
 [v0.5.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.5.0).
 From the download directory, verify `sha256sum --check SHA256SUMS`, then install
 the packages you need:
