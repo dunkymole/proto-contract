@@ -44,7 +44,10 @@ extension definitions are available. This includes scalar, repeated, enum and
 message-valued annotations such as validation rules and HTTP bindings. Nested
 message values, maps and extension values are decoded against those definitions;
 unknown fields, undefined enum numbers, malformed values, missing imports and
-uninterpreted options are rejected. Group-valued annotations are unsupported.
+uninterpreted options are rejected. Distinct extension definitions cannot claim
+the same extendee and field number, including definitions nested in messages or
+imported from different files: that would make option decoding ambiguous.
+Group-valued annotations are unsupported.
 
 Every custom-option addition, removal or value change requires a **major** API
 contract bump, including options on newly added declarations. This first increment

@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 )
@@ -43,6 +44,9 @@ func (c *optionCollector) split(message proto.Message) (proto.Message, proto.Mes
 		files, err := protodesc.NewFiles(c.set)
 		if err != nil {
 			return nil, nil, fmt.Errorf("resolve custom option definitions: %w", err)
+		}
+		if err := checkCustomExtensionNumbers(files); err != nil {
+			return nil, nil, err
 		}
 		c.types = dynamicpb.NewTypes(files)
 		c.files, c.used = map[string]*descriptorpb.FileDescriptorProto{}, map[string]bool{}
@@ -94,7 +98,7 @@ func (c *optionCollector) definitions() (*Feature, error) {
 		if file == nil {
 			return fmt.Errorf("missing custom option dependency %q", name)
 		}
-		if err := validateDescriptorFile(file); err != nil {
+		if err := validateCustomDefinitionFile(file); err != nil {
 			return err
 		}
 		for _, dependency := range file.Dependency {
@@ -148,13 +152,16 @@ func customTypes(snapshot *Snapshot) (*dynamicpb.Types, error) {
 			if file.SourceCodeInfo != nil || (i > 0 && set.File[i-1].GetName() >= file.GetName()) {
 				return nil, fmt.Errorf("custom option definitions are not canonical")
 			}
-			if err := validateDescriptorFile(file); err != nil {
+			if err := validateCustomDefinitionFile(file); err != nil {
 				return nil, err
 			}
 		}
 		files, err := protodesc.NewFiles(set)
 		if err != nil {
 			return nil, fmt.Errorf("invalid custom option definitions: %w", err)
+		}
+		if err := checkCustomExtensionNumbers(files); err != nil {
+			return nil, err
 		}
 		types := dynamicpb.NewTypes(files)
 		if err := (proto.UnmarshalOptions{Resolver: types, RecursionLimit: 100}).Unmarshal(data, set); err != nil {
@@ -170,6 +177,64 @@ func customTypes(snapshot *Snapshot) (*dynamicpb.Types, error) {
 		return types, nil
 	}
 	return nil, nil
+}
+
+func validateCustomDefinitionFile(file *descriptorpb.FileDescriptorProto) error {
+	if err := validateDescriptorFile(file); err != nil {
+		return err
+	}
+	// Custom definition schemas currently have no resolved edition-feature
+	// projection. Keep them closed even when service editions are supported.
+	if file.GetSyntax() == "editions" {
+		return fmt.Errorf("unsupported edition semantics in custom option definitions %s", file.GetName())
+	}
+	return nil
+}
+
+// NewFiles checks declaration names but permits two extensions with different
+// names to claim the same extendee/number. A dynamic resolver would then choose
+// one definition by iteration order. Reject ambiguity before decoding values,
+// both when building a lock and when accepting an externally supplied lock.
+func checkCustomExtensionNumbers(files *protoregistry.Files) error {
+	type extensionKey struct {
+		message protoreflect.FullName
+		number  protoreflect.FieldNumber
+	}
+	seen := map[extensionKey]bool{}
+	var checkExtensions func(protoreflect.ExtensionDescriptors) error
+	checkExtensions = func(extensions protoreflect.ExtensionDescriptors) error {
+		for i := 0; i < extensions.Len(); i++ {
+			extension := extensions.Get(i)
+			key := extensionKey{extension.ContainingMessage().FullName(), extension.Number()}
+			if seen[key] {
+				return fmt.Errorf("ambiguous custom option definitions: multiple extensions of %s use number %d", key.message, key.number)
+			}
+			seen[key] = true
+		}
+		return nil
+	}
+	var checkMessages func(protoreflect.MessageDescriptors) error
+	checkMessages = func(messages protoreflect.MessageDescriptors) error {
+		for i := 0; i < messages.Len(); i++ {
+			message := messages.Get(i)
+			if err := checkExtensions(message.Extensions()); err != nil {
+				return err
+			}
+			if err := checkMessages(message.Messages()); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	var result error
+	files.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		result = checkExtensions(file.Extensions())
+		if result == nil {
+			result = checkMessages(file.Messages())
+		}
+		return result == nil
+	})
+	return result
 }
 
 func canonicalFeatureBytes(feature Feature) ([]byte, error) {
