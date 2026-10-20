@@ -85,7 +85,7 @@ class FakeGitHub:
         self.writes.append(args)
         operation = args[2]
         if operation == 'create':
-            notes = pathlib.Path(args[args.index('--notes-file') + 1]).read_text()
+            notes = pathlib.Path(args[args.index('--notes-file') + 1]).read_text(encoding='utf-8')
             self.release = {'draft': True, 'prerelease': False, 'body': notes, 'assets': [],
                             'html_url': f'https://github.com/{tool.REPO}/releases/tag/v{VERSION}'}
         elif operation == 'upload':
@@ -224,6 +224,12 @@ class PublisherTests(unittest.TestCase):
         report = self.publish(dry_run=True)
         self.assertEqual(report['writes'], [])
         self.assertEqual(self.github.writes, [])
+
+    def test_unicode_notes_survive_publication(self):
+        (self.out / 'RELEASE_NOTES.md').write_text('Résumé — checked release notes\n', encoding='utf-8')
+        rehash(self.out)
+        self.publish()
+        self.assertIn('Résumé — checked', self.github.release['body'])
 
     def test_local_candidate_can_only_be_dry_run(self):
         with self.assertRaisesRegex(ValueError, 'only for --dry-run'):

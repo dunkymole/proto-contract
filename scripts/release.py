@@ -62,6 +62,9 @@ def api(path, method='GET', fields=None, optional=False, binary=False):
 def config():
     data = json.loads((ROOT / 'release.json').read_text())
     version(data['version'])
+    for name, count in data['targets'].items():
+        require((ROOT / name).resolve().is_relative_to(ROOT.resolve()) and name != 'release.json', 'version target outside the source tree or self-referencing')
+        require(type(count) is int and count > 0, 'version target counts must be positive integers')
     return data
 
 
@@ -124,6 +127,7 @@ def bump(v, commit, summary, date, dry_run=False):
         edits[ROOT / name] = (ROOT / name).read_text(encoding='utf-8').replace(current, v)
     changelog = ROOT / 'CHANGELOG.md'
     text = changelog.read_text(encoding='utf-8')
+    require(not re.search(rf'^## {re.escape(v)}(?: |$)', text, re.M), 'changelog already contains the proposed version')
     unreleased = re.search(r'^## Unreleased\n(.*?)(?=^## |\Z)', text, re.M | re.S)
     heading = f'## {v} ({date})\n\n- {summary.strip()}\n'
     if unreleased:
@@ -382,7 +386,7 @@ def publish(v, commit, run_id, artifact_id, dry_run=False, candidate_dir=None):
             require(run_id and artifact_id, 'provide the exact workflow run ID and artifact ID')
             download_artifact(run_id, artifact_id, v, commit, root)
         marker = f'<!-- proto-contract-candidate:{REPO}:{run_id}:{artifact_id}:{commit} -->\n'
-        notes = (root / 'RELEASE_NOTES.md').read_text()
+        notes = (root / 'RELEASE_NOTES.md').read_text(encoding='utf-8')
         if run_id:
             notes += f'\nValidation: https://github.com/{REPO}/actions/runs/{run_id}\nArtifact: {artifact_id}\n'
         files = {p.name: p.read_bytes() for p in root.iterdir()}
