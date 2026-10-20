@@ -97,7 +97,7 @@ The tested examples use these dependencies; see the linked build files for exact
 | .NET | .NET 9, `Grpc.Net.Client`/`Grpc.AspNetCore`, `Grpc.Tools`; [client project](../examples/clients/dotnet/ProtoContractClientDemo.csproj), [server project](../examples/servers/dotnet/ProtoContractServerDemo.csproj) |
 | TypeScript | Node.js 24 for the executable example, Connect 2.x, Protobuf-ES 2.15.0, and pinned grpc-bridge source; [package manifest](../examples/clients/grpc-bridge/package.json), [Docker build](../examples/clients/grpc-bridge/Dockerfile) |
 
-These are demonstrated configurations, not a compatibility promise for every language/runtime release. Native runtime packages are built locally and installed from artifacts by the examples. v0.4.0 packages are available from [GitHub Releases](https://github.com/dunkymole/proto-contract/releases/tag/v0.4.0); see [installation and package preparation](PACKAGES.md). grpc-bridge's example package is built locally in Docker from its pinned source revision.
+These are demonstrated configurations, not a compatibility promise for every language/runtime release. Native runtime packages are built locally and installed from artifacts by the examples. v0.5.0 candidate packages come from Actions during preparation and from [GitHub Releases](https://github.com/dunkymole/proto-contract/releases/tag/v0.5.0) after publication; see [installation and package preparation](PACKAGES.md). grpc-bridge's example package is built locally in Docker from its pinned source revision.
 
 ## RPC coverage
 

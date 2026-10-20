@@ -2,7 +2,9 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
-## Unreleased
+## 0.5.0 (2026-10-20)
+
+- Support canonical Edition 2023 core semantics and a repeatable, verified package release process.
 
 - Add checked version updates, read-only candidate preparation, explicit promotion of tested artifacts, resumable publication and public-download/Go verification, with a next-version dry run.
 - Support the six core Edition 2023 features with canonical defaults and inheritance, fail-closed scope/value validation, matching CLI/plugin behavior, and runtime graph checks.

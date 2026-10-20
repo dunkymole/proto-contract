@@ -308,5 +308,5 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before openin
 
 Licensed under the [MIT License](LICENSE).
 
-Runtime package builds and a clean consumer starter are documented in [package preparation](docs/PACKAGES.md). Installable runtime artifacts and SHA-256 checksums are available in the [v0.4.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.4.0).
+Runtime package builds and a clean consumer starter are documented in [package preparation](docs/PACKAGES.md). Prepared artifacts and checksums are retained by the candidate workflow; after publication they are available on the [v0.5.0 release page](https://github.com/dunkymole/proto-contract/releases/tag/v0.5.0).
 See the [release runbook](docs/RELEASING.md) for repeatable version updates, candidate preparation and publication.
