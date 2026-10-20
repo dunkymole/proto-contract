@@ -111,75 +111,16 @@ and coverage helpers. Runtime internals are not a separate
 stability promise. Python's asynchronous grpc.aio API is not covered by this
 synchronous adapter.
 
-## Release preparation
+## Release process
 
-First test compiler and adapters together, then record their versions and the
-tested grpc-bridge revision (currently pinned by the CI workflow). Verify artifacts
-from a clean consumer and review dependency/license metadata before authorizing
-any upload. Python and Java artifacts include MIT notices; NuGet includes the MIT
-expression and license file; the Go archive includes the root license. Java ZIP
-timestamps and Go ZIP entries are fixed; Python uses SOURCE_DATE_EPOCH and .NET
-uses deterministic compilation. Cross-machine byte-for-byte reproducibility is
-not yet asserted for every ecosystem.
+Follow the [package release runbook](RELEASING.md) for checked version updates,
+read-only candidate preparation, explicit publication and verification. The
+current version and managed references are checked by `scripts/release.py check`.
+The existing build/test scripts above remain the package-validation entry points.
 
-There are no upload or deploy steps in the local package scripts. TypeScript remains
-coordinated with grpc-bridge's distribution; C++ is outside this package work.
-
-## GitHub Releases preparation
-
-`.github/workflows/package-release.yml` runs manually through **Actions → Prepare
-package release → Run workflow**. Its default `create_draft=false` builds and tests
-all packages, runs the clean starter and interoperability matrix, prepares release
-assets, checks their SHA-256 hashes, and stores a downloadable Actions artifact
-for 30 days. It requires only repository read access and creates no Release or tag.
-The workflow must first be committed and made available on the default branch
-before GitHub offers its manual trigger. Merging it does not run the workflow.
-
-To prepare the assets locally after `scripts/test-packages.ps1`:
-
-```sh
-python scripts/prepare-release.py
-cd artifacts/release
-sha256sum --check SHA256SUMS
-```
-
-On Windows without Python installed, run the helper using the existing container:
-
-```powershell
-docker run --rm -v "${PWD}:/workspace" -w /workspace python:3.13-slim python scripts/prepare-release.py
-```
-
-The output includes the Python wheel/source distribution, Java binary/source/API
-documentation JARs and a versioned POM, NuGet package, Go file-proxy ZIP,
-`manifest.json`, and `SHA256SUMS`. The helper verifies every input against the build
-manifest and refuses missing, extra, modified or inconsistently versioned packages.
-It also refuses an existing output directory: use `--out` with a fresh destination
-for subsequent preparations. Checksums detect corrupted downloads; they are not
-cryptographic signatures or an independent proof of publisher identity.
-
-The published package version is **v0.4.0**. Its release includes the packages, clean-source manifest and `SHA256SUMS`.
-This minor release adds checked custom-option support to the compiler, including
-imported validation and HTTP annotations and source-retained options. Custom-option
-changes conservatively require a major API contract bump. New annotated locks
-require the v0.4.0 compiler; v0.3.0 and earlier reject their feature kinds.
-Unannotated locks and the RPC metadata format retain their existing semantics.
-The runtime packages remain version-aligned with the compiler. Editions remain
-unsupported and will be developed separately. The package bump alone does not
-require changing application contract versions.
-For subsequent versions, update the Python/Java/.NET package metadata, Go proxy
-builder, consumer dependency versions, build manifest version and package
-verification fixtures together. Commit the tested source and create its matching
-`vNEXT` tag only when release work is authorized (substitute the new package version). Run this workflow on that
-exact tag with `create_draft=true`. The draft job alone receives `contents: write`;
-it checks the tag points to the workflow commit, verifies clean-source provenance
-and downloaded checksums, then creates an **unpublished draft** with the assets.
-An existing release causes creation to fail; assets are never overwritten.
-
-Review the draft and its assets before publishing manually in GitHub. No workflow
-step publishes the draft, uploads to language registries, or creates/moves tags.
-Creating the public Git tag makes the Go module available independently of the
-GitHub Release's draft status. Review the prepare-only workflow's assets first,
-then create the tag only when Go publication is authorized.
-The Go proxy ZIP is a download/test convenience; normal `go get` users obtain the
-module through the matching repository tag. Installation from GitHub Release
-assets is different from publishing to PyPI, Maven Central or NuGet.org.
+Release assets include the packages, manifest and checksums; workflow candidates
+also carry source/run metadata and reviewable release notes. Publication promotes
+those exact tested bytes and is a separate explicit command. The public Go tag is
+itself publication. TypeScript distribution remains coordinated with grpc-bridge;
+C++ is outside this package process. Application API contract versions and their
+release history remain independent of compiler/runtime package releases.

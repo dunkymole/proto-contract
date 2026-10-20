@@ -16,7 +16,7 @@ RUN dotnet pack dotnet/ProtoContract.Runtime.csproj -c Release -o /packages/dotn
 
 FROM python:3.13-slim AS go-package
 WORKDIR /source
-COPY go.mod go.sum LICENSE README.md ./
+COPY go.mod go.sum LICENSE README.md release.json ./
 COPY cmd/ cmd/
 COPY internal/ internal/
 COPY runtimes/go/ runtimes/go/

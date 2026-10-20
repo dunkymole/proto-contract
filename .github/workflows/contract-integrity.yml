@@ -60,7 +60,7 @@ jobs:
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
       - name: Test release assets and checksum failure handling
-        run: python3 -m unittest discover -s packaging -p 'test_release.py'
+        run: python3 -m unittest discover -s packaging -p 'test_release*.py'
 
       - name: Build compiler for check report
         run: go build -o "$RUNNER_TEMP/proto-contract" ./cmd/proto-contract
@@ -105,3 +105,45 @@ jobs:
         run: |
           docker compose --project-name "$COMPOSE_PROJECT_NAME" logs --no-color || true
           docker compose --project-name "$COMPOSE_PROJECT_NAME" down --remove-orphans || true
+
+  release-dry-run:
+    name: Dry run the next package version (no publication)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GRPC_BRIDGE_REPOSITORY: https://github.com/dunkymole/grpc-bridge.git
+      GRPC_BRIDGE_REF: 87f0e1c86dcd53b64cd24948962ced5b3fc38f99
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.2'
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned source-retention compiler
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/protocolbuffers/protobuf/releases/download/v33.0/protoc-33.0-linux-x86_64.zip \
+            --output "$RUNNER_TEMP/protoc.zip"
+          echo "d99c011b799e9e412064244f0be417e5d76c9b6ace13a2ac735330fa7d57ad8f  $RUNNER_TEMP/protoc.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Prepare and inspect the next version without publication
+        run: python scripts/test-release-dry-run.py
+      - name: Retain dry-run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-process-dry-run-${{ github.run_id }}
+          path: |
+            artifacts/release-dry-run-*/candidate/*
+            artifacts/release-dry-run-*/DRY_RUN_REPORT.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -2,11 +2,6 @@ name: Prepare package release
 
 on:
   workflow_dispatch:
-    inputs:
-      create_draft:
-        description: 'Create an unpublished draft Release (requires an existing version tag at this commit)'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -23,6 +18,7 @@ jobs:
       version: ${{ steps.bundle.outputs.version }}
     env:
       COMPOSE_PROJECT_NAME: package-release-${{ github.run_id }}-${{ github.run_attempt }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,65 +32,60 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install protoc
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler jq
+      - name: Check unpublished version and exact clean source
+        run: python scripts/release.py preflight --commit "$GITHUB_SHA"
       - name: Test compiler and runtime
         run: go test ./...
+      - name: Vet compiler and runtime
+        run: go vet ./...
       - name: Check reachable Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Test custom options with source retention
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/protocolbuffers/protobuf/releases/download/v33.0/protoc-33.0-linux-x86_64.zip \
+            --output "$RUNNER_TEMP/protoc.zip"
+          echo "d99c011b799e9e412064244f0be417e5d76c9b6ace13a2ac735330fa7d57ad8f  $RUNNER_TEMP/protoc.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          PATH="$RUNNER_TEMP/protoc/bin:$PATH" go test ./internal/contract -run '^TestProtoc' -count=1 -v
+          PATH="$RUNNER_TEMP/protoc/bin:$PATH" bash scripts/test-custom-options.sh
+          PATH="$RUNNER_TEMP/protoc/bin:$PATH" bash scripts/test-editions.sh
+
       - name: Build packages and test clean consumers
         shell: pwsh
         run: ./scripts/test-packages.ps1
       - name: Test release preparation
-        run: python -m unittest discover -s packaging -p 'test_release.py'
+        run: python -m unittest discover -s packaging -p 'test_release*.py'
+      - name: Verify native naming
+        run: pwsh ./scripts/test-naming.ps1
+      - name: Verify rollout behavior
+        run: pwsh ./scripts/test-rollout.ps1
       - name: Prepare release files and SHA-256 checksums
         id: bundle
         shell: bash
         run: |
           set -euo pipefail
           test -z "$(git status --porcelain)"
-          version=$(python scripts/prepare-release.py)
+          python scripts/release.py check
+          python scripts/release.py bundle --commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --out artifacts/release
+          version=$(python -c 'import json; print(json.load(open("release.json"))["version"])')
           echo "version=$version" >> "$GITHUB_OUTPUT"
           cd artifacts/release
           sha256sum --check SHA256SUMS
       - uses: actions/upload-artifact@v4
+        id: upload
         with:
           name: proto-contract-release-${{ steps.bundle.outputs.version }}
           path: artifacts/release/*
           if-no-files-found: error
           retention-days: 30
 
-  draft:
-    if: ${{ inputs.create_draft }}
-    needs: prepare
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-      VERSION: ${{ needs.prepare.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/download-artifact@v4
-        with:
-          name: proto-contract-release-${{ needs.prepare.outputs.version }}
-          path: release
-      - name: Verify the existing tag and downloaded assets
-        shell: bash
+      - name: Explain candidate promotion
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          VERSION: ${{ steps.bundle.outputs.version }}
         run: |
-          set -euo pipefail
-          test "$(git rev-parse "refs/tags/v${VERSION}^{commit}")" = "$GITHUB_SHA"
-          test "$(jq -r .sourceRevision release/manifest.json)" = "$GITHUB_SHA"
-          test "$(jq -r .sourceHasChanges release/manifest.json)" = false
-          cd release
-          sha256sum --check SHA256SUMS
-      - name: Create draft for manual review
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh release create "v${VERSION}" release/* --verify-tag --draft --latest=false \
-            --title "Proto Contract v${VERSION}" \
-            --notes "Runtime packages for Go, Python, Java, and .NET. Verify downloads with SHA256SUMS. See docs/PACKAGES.md at this tag for installation instructions."
+          echo 'Prepared only: no tag or Release was created.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Candidate run: $GITHUB_RUN_ID; artifact: $ARTIFACT_ID; source: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Dry-run promotion: python scripts/release.py publish --version $VERSION --commit $GITHUB_SHA --run-id $GITHUB_RUN_ID --artifact-id $ARTIFACT_ID --dry-run" >> "$GITHUB_STEP_SUMMARY"
