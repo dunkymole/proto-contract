@@ -141,6 +141,11 @@ func addEditionFeatures(s *Snapshot, idx *index, usedFiles map[*descriptorpb.Fil
 			if field.GetLabel() == descriptorpb.FieldDescriptorProto_LABEL_REQUIRED || field.GetProto3Optional() || (field.GetOptions() != nil && field.GetOptions().Packed != nil) {
 				return fmt.Errorf("unsupported legacy field label, proto3_optional, or packed option in editions field %s.%s", message.Name, field.GetName())
 			}
+			if rawFeatures := field.GetOptions().GetFeatures(); rawFeatures != nil && rawFeatures.MessageEncoding != nil {
+				if target := idx.messages[strings.TrimPrefix(field.GetTypeName(), ".")]; target != nil && target.GetOptions().GetMapEntry() {
+					return fmt.Errorf("message encoding overrides on maps are unsupported")
+				}
+			}
 			own := proto.Clone(effective).(*descriptorpb.FeatureSet)
 			proto.Merge(own, field.GetOptions().GetFeatures())
 			if err := validateEditionFieldSettings(field, own); err != nil {
@@ -249,6 +254,23 @@ func validateEditionSnapshot(s *Snapshot) error {
 			}
 			if f.Label == "LABEL_REQUIRED" || f.Proto3Optional {
 				return fmt.Errorf("legacy field presence in editions field %s.%s", m.Name, f.Name)
+			}
+			parent := resolved[m.Name]
+			if fs.GetUtf8Validation() != parent.GetUtf8Validation() && f.Type != "TYPE_STRING" {
+				return fmt.Errorf("UTF-8 override requires a string field")
+			}
+			packable := f.Label == "LABEL_REPEATED" && f.Type != "TYPE_MESSAGE" && f.Type != "TYPE_STRING" && f.Type != "TYPE_BYTES"
+			if fs.GetRepeatedFieldEncoding() != parent.GetRepeatedFieldEncoding() && !packable {
+				return fmt.Errorf("repeated encoding override requires a repeated packable field")
+			}
+			if fs.GetFieldPresence() != parent.GetFieldPresence() && (f.Label == "LABEL_REPEATED" || f.Oneof != "" || f.Type == "TYPE_MESSAGE" && fs.GetFieldPresence() == descriptorpb.FeatureSet_IMPLICIT) {
+				return fmt.Errorf("invalid field presence override")
+			}
+			if fs.GetMessageEncoding() != parent.GetMessageEncoding() {
+				target, _ := findMessage(s, f.TypeName)
+				if f.Type != "TYPE_MESSAGE" || target.MapEntry {
+					return fmt.Errorf("message encoding override requires a non-map message field")
+				}
 			}
 			if fs.GetEnumType() != resolved[m.Name].GetEnumType() || fs.GetJsonFormat() != resolved[m.Name].GetJsonFormat() {
 				return fmt.Errorf("field-only edition configuration cannot override enum or JSON policy: %s.%s", m.Name, f.Name)

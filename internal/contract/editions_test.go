@@ -273,3 +273,33 @@ func TestEditionImplicitImportedEnumRules(t *testing.T) {
 		})
 	}
 }
+
+func TestEditionLockRejectsNonApplicableFeatureOverrides(t *testing.T) {
+	set := editionFixture()
+	set.File[0].MessageType[0].Field[0].Type = descriptorpb.FieldDescriptorProto_TYPE_INT32.Enum()
+	set.File[0].MessageType[0].Field[0].TypeName = nil
+	base, err := Build(set, "test.S", "test", "1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]func(*descriptorpb.FeatureSet){"UTF8": func(f *descriptorpb.FeatureSet) { f.Utf8Validation = descriptorpb.FeatureSet_NONE.Enum() }, "packing": func(f *descriptorpb.FeatureSet) { f.RepeatedFieldEncoding = descriptorpb.FeatureSet_EXPANDED.Enum() }, "message encoding": func(f *descriptorpb.FeatureSet) { f.MessageEncoding = descriptorpb.FeatureSet_DELIMITED.Enum() }}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			s := *base
+			s.Features = append([]Feature(nil), base.Features...)
+			for i, f := range s.Features {
+				if f.Name != "edition-features:test.Request.status" {
+					continue
+				}
+				v := edition2023Defaults()
+				mutate(v)
+				b, _ := proto.Marshal(v)
+				s.Features[i].Value = hex.EncodeToString(b)
+			}
+			s.Digest, _ = calculateDigest(&s)
+			if err := Validate(&s); err == nil {
+				t.Fatal("accepted inapplicable override")
+			}
+		})
+	}
+}
