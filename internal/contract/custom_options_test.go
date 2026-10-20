@@ -175,6 +175,95 @@ func TestCustomOptionsCollectNestedExtensionDefinitions(t *testing.T) {
 	}
 }
 
+func TestCustomOptionsOnNewFieldsRequireMajor(t *testing.T) {
+	set := customFixture(t)
+	before := buildCustom(t, set)
+	field := proto.Clone(set.File[0].MessageType[0].Field[0]).(*descriptorpb.FieldDescriptorProto)
+	field.Name = proto.String("additional")
+	field.Number = proto.Int32(2)
+	set.File[0].MessageType[0].Field = append(set.File[0].MessageType[0].Field, field)
+	after := buildCustom(t, set)
+	if bump, _ := Compare(before, after); bump != Major {
+		t.Fatalf("custom annotation on new field = %s, want major", bump)
+	}
+	// The identical structural addition without an annotation remains minor.
+	field.Options = nil
+	if bump, _ := Compare(before, buildCustom(t, set)); bump != Minor {
+		t.Fatalf("unannotated new field = %s, want minor", bump)
+	}
+}
+
+func TestCustomOptionsCheckImportedDefinitionMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*descriptorpb.FileDescriptorSet)
+	}{
+		{"unknown definition field", func(s *descriptorpb.FileDescriptorSet) {
+			s.File[1].MessageType[0].Field[0].ProtoReflect().SetUnknown([]byte{0xA0, 0x06, 1})
+		}},
+		{"unknown definition option", func(s *descriptorpb.FileDescriptorSet) {
+			f := s.File[1].MessageType[0].Field[0]
+			f.Options = &descriptorpb.FieldOptions{}
+			f.Options.ProtoReflect().SetUnknown(protowire.AppendVarint(protowire.AppendTag(nil, 60000, protowire.VarintType), 1))
+		}},
+		{"uninterpreted definition option", func(s *descriptorpb.FileDescriptorSet) {
+			s.File[1].MessageType[0].Field[0].Options = &descriptorpb.FieldOptions{UninterpretedOption: []*descriptorpb.UninterpretedOption{{Name: []*descriptorpb.UninterpretedOption_NamePart{{NamePart: proto.String("missing"), IsExtension: proto.Bool(true)}}, PositiveIntValue: proto.Uint64(1)}}}
+		}},
+		{"duplicate definition file", func(s *descriptorpb.FileDescriptorSet) {
+			s.File = append(s.File, proto.Clone(s.File[1]).(*descriptorpb.FileDescriptorProto))
+		}},
+		{"duplicate extension number", func(s *descriptorpb.FileDescriptorSet) {
+			ext := proto.Clone(s.File[1].Extension[0]).(*descriptorpb.FieldDescriptorProto)
+			ext.Name = proto.String("conflicting")
+			s.File[1].Extension = append(s.File[1].Extension, ext)
+		}},
+		{"duplicate nested extension number", func(s *descriptorpb.FileDescriptorSet) {
+			ext := proto.Clone(s.File[1].Extension[0]).(*descriptorpb.FieldDescriptorProto)
+			ext.Name = proto.String("conflicting")
+			s.File[1].MessageType[0].NestedType = []*descriptorpb.DescriptorProto{{Name: proto.String("Nested"), Extension: []*descriptorpb.FieldDescriptorProto{ext}}}
+		}},
+		{"duplicate imported extension number", func(s *descriptorpb.FileDescriptorSet) {
+			ext := proto.Clone(s.File[1].Extension[0]).(*descriptorpb.FieldDescriptorProto)
+			ext.Name = proto.String("conflicting")
+			s.File = append(s.File, &descriptorpb.FileDescriptorProto{
+				Name: proto.String("conflicting.proto"), Package: proto.String("conflicting"), Syntax: proto.String("proto2"), Dependency: []string{"policy.proto", "google/protobuf/descriptor.proto"}, Extension: []*descriptorpb.FieldDescriptorProto{ext},
+			})
+			s.File[0].Dependency = append(s.File[0].Dependency, "conflicting.proto")
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			set := customFixture(t)
+			tc.mutate(set)
+			if _, err := Build(set, "test.S", "test", "1.0.0"); err == nil {
+				t.Fatal("accepted unsupported imported definition semantics")
+			}
+		})
+	}
+}
+
+func TestCustomOptionsFingerprintTransitiveDefinitions(t *testing.T) {
+	set := customFixture(t)
+	set.File[1].Dependency = append(set.File[1].Dependency, "limits.proto")
+	set.File = append(set.File, &descriptorpb.FileDescriptorProto{
+		Name: proto.String("limits.proto"), Package: proto.String("limits"), Syntax: proto.String("proto2"),
+		MessageType: []*descriptorpb.DescriptorProto{{Name: proto.String("Limit"), Field: []*descriptorpb.FieldDescriptorProto{{
+			Name: proto.String("value"), Number: proto.Int32(1), Type: descriptorpb.FieldDescriptorProto_TYPE_INT32.Enum(), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), DefaultValue: proto.String("1"),
+		}}}},
+	})
+	set.File[1].MessageType[0].Field = append(set.File[1].MessageType[0].Field, &descriptorpb.FieldDescriptorProto{
+		Name: proto.String("limit"), Number: proto.Int32(3), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: proto.String(".limits.Limit"), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+	})
+	before := buildCustom(t, set)
+	set.File[3].MessageType[0].Field[0].DefaultValue = proto.String("2")
+	after := buildCustom(t, set)
+	if before.Digest == after.Digest {
+		t.Fatal("transitive definition change did not affect digest")
+	}
+	if bump, _ := Compare(before, after); bump != Major {
+		t.Fatalf("transitive definition change = %s, want major", bump)
+	}
+}
+
 func TestCustomOptionLocksAreValidatedBeforeGeneration(t *testing.T) {
 	base := buildCustom(t, customFixture(t))
 	for _, tc := range []struct {
@@ -187,6 +276,34 @@ func TestCustomOptionLocksAreValidatedBeforeGeneration(t *testing.T) {
 					s.Features = append(s.Features[:i], s.Features[i+1:]...)
 					break
 				}
+			}
+		}},
+		{"ambiguous definitions", func(s *Snapshot) {
+			for i, f := range s.Features {
+				if f.Name != customDefinitions {
+					continue
+				}
+				data, err := hex.DecodeString(f.Value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				set := &descriptorpb.FileDescriptorSet{}
+				if err := proto.Unmarshal(data, set); err != nil {
+					t.Fatal(err)
+				}
+				for _, file := range set.File {
+					if file.GetName() != "policy.proto" {
+						continue
+					}
+					ext := proto.Clone(file.Extension[0]).(*descriptorpb.FieldDescriptorProto)
+					ext.Name = proto.String("conflicting")
+					file.Extension = append(file.Extension, ext)
+				}
+				data, err = (proto.MarshalOptions{Deterministic: true}).Marshal(set)
+				if err != nil {
+					t.Fatal(err)
+				}
+				s.Features[i].Value = hex.EncodeToString(data)
 			}
 		}},
 		{"invalid owner", func(s *Snapshot) {
