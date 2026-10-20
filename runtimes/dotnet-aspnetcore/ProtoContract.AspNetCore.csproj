@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>ProtoContract.AspNetCore</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Combined gRPC endpoint and contract registration with global enforcement.</Description>
