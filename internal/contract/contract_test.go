@@ -217,9 +217,9 @@ func TestBuildRejectsUnsupportedDescriptorFeatures(t *testing.T) {
 	}
 	set = descriptorSet(nil, false, enumValue("ZERO", 0))
 	set.File[0].Syntax = proto.String("editions")
-	set.File[0].Edition = descriptorpb.Edition_EDITION_2023.Enum()
+	set.File[0].Edition = descriptorpb.Edition_EDITION_2024.Enum()
 	if _, err := Build(set, "test.S", "test", "1.0.0"); err == nil {
-		t.Fatal("accepted editions descriptor")
+		t.Fatal("accepted unsupported edition descriptor")
 	}
 }
 

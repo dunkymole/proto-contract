@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { create, createFileRegistry, fromBinary } from "@bufbuild/protobuf";
+import { FileDescriptorSetSchema, FieldOptionsSchema, FeatureSetSchema, FeatureSet_Utf8Validation } from "@bufbuild/protobuf/wkt";
+import { defineContract } from "@dunkymole/grpc-bridge/codegen";
+import { contract, runtimeGraph } from "./service_contract.js";
+import { API } from "./service_pb.js";
+
+assert.equal(contract.api, "editions_demo");
+assert.ok(Object.isFrozen(API));
+const request = runtimeGraph.messages.find((message) => message.typeName === "editions_demo.Request");
+assert.ok(request);
+assert.equal(request.fields.find((field) => field.name === "text")?.utf8Validation, true);
+assert.equal(request.fields.find((field) => field.name === "state")?.presence, "LEGACY_REQUIRED");
+const values = request.fields.find((field) => field.name === "values");
+assert.ok(values && values.shape.kind === "list");
+assert.equal(values.shape.packed, false);
+assert.equal(runtimeGraph.enums.find((enumeration) => enumeration.typeName === "editions_demo.State")?.open, false);
+
+const set = fromBinary(FileDescriptorSetSchema, readFileSync("service.bin"));
+const independentlyLoaded = createFileRegistry(set).getService("editions_demo.API");
+assert.ok(independentlyLoaded);
+defineContract({ service: independentlyLoaded, api: contract.api, version: contract.version, fingerprint: contract.fingerprint, graph: runtimeGraph });
+const changedSet = fromBinary(FileDescriptorSetSchema, readFileSync("service.bin"));
+const file = changedSet.file.find((file) => file.name === "service.proto");
+const text = file?.messageType[0].field[0];
+assert.ok(text);
+text.options = create(FieldOptionsSchema, { features: create(FeatureSetSchema, { utf8Validation: FeatureSet_Utf8Validation.NONE }) });
+const mismatched = createFileRegistry(changedSet).getService("editions_demo.API");
+assert.ok(mismatched);
+assert.throws(() => defineContract({ service: mismatched, api: contract.api, version: contract.version, fingerprint: contract.fingerprint, graph: runtimeGraph }), /runtime graph/);
+console.log("PASS genuine Edition 2023 ES binding; resolved defaults and overrides agree; stale UTF8 policy rejected");

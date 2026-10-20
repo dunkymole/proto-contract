@@ -251,3 +251,7 @@ Contracts.Orders.Contract.MapService<OrdersService>(app);
 ```csharp
 var client = Contracts.Orders.Contract.CreateClient(channel);
 ```
+
+## Edition 2023 descriptors
+
+The compiler supports the [core Edition 2023 subset](COMPATIBILITY.md#protobuf-edition-2023). TypeScript runtime graph checks include resolved presence, packing, UTF-8 validation, enum openness, and message encoding; JSON policy and source annotations are checked against descriptors during generation. Native contract generation supports edition descriptors, but compiling the protobuf bindings requires edition-capable native generators and runtimes. Existing cross-language interoperability examples continue to use proto3.

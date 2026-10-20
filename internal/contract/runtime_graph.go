@@ -325,7 +325,7 @@ func utf8Validated(field protoreflect.FieldDescriptor) bool {
 			return features.GetUtf8Validation() == descriptorpb.FeatureSet_VERIFY
 		}
 	}
-	return field.Syntax() == protoreflect.Proto3
+	return field.Syntax() == protoreflect.Proto3 || field.Syntax() == protoreflect.Editions
 }
 
 func enumIsOpen(desc protoreflect.EnumDescriptor) bool {
@@ -334,7 +334,7 @@ func enumIsOpen(desc protoreflect.EnumDescriptor) bool {
 			return features.GetEnumType() == descriptorpb.FeatureSet_OPEN
 		}
 	}
-	return desc.Syntax() == protoreflect.Proto3
+	return desc.Syntax() == protoreflect.Proto3 || desc.Syntax() == protoreflect.Editions
 }
 
 func messageDelimited(field protoreflect.FieldDescriptor) bool {

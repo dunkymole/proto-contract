@@ -1,0 +1,15 @@
+edition = "2023";
+package editions_demo;
+option go_package = "example.test/editions_demo;editions_demo";
+option features.enum_type = CLOSED;
+option features.json_format = LEGACY_BEST_EFFORT;
+
+message Request {
+  option features.json_format = ALLOW;
+  string text = 1;
+  repeated int32 values = 2 [features.repeated_field_encoding = EXPANDED];
+  State state = 3 [features.field_presence = LEGACY_REQUIRED];
+}
+message Response {}
+enum State { ZERO = 0; ONE = 1; }
+service API { rpc Call(Request) returns (Response); }

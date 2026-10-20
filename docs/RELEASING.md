@@ -10,7 +10,7 @@ PyPI, Maven Central or NuGet.org.
 - Git, Python 3.11+ and GitHub CLI (`gh auth login`). On Windows, `py -3` can replace
   `python`; use an installed interpreter rather than the Windows Store alias.
 - PowerShell 7, Docker with Linux containers, Go at the pinned toolchain, Bash and
-  protoc for local full preparation. Windows Git Bash supplies Bash. Use the
+  protoc 33 for local full preparation (including Edition 2023 tests). Windows Git Bash supplies Bash. Use the
   GitHub workflow for the complete pinned CI toolchain instead of installing all
   build tools locally. Runtime builds use the existing Dockerfiles.
 - Read access is enough for preparation and dry-run promotion. Only the explicit

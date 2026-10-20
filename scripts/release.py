@@ -271,6 +271,7 @@ def prepare(commit, out):
                 [sys.executable, '-m', 'unittest', 'discover', '-s', 'packaging', '-p', 'test_release*.py'],
                 ['go', 'run', 'golang.org/x/vuln/cmd/govulncheck@v1.9.0', './...'],
                 ['bash', 'scripts/test-custom-options.sh'],
+                ['bash', 'scripts/test-editions.sh'],
                 ['pwsh', '-NoProfile', '-File', 'scripts/test-packages.ps1'],
                 ['pwsh', '-NoProfile', '-File', 'scripts/test-naming.ps1'],
                 ['pwsh', '-NoProfile', '-File', 'scripts/test-rollout.ps1']]

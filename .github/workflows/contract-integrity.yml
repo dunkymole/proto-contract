@@ -54,6 +54,7 @@ jobs:
           unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
           PATH="$RUNNER_TEMP/protoc/bin:$PATH" go test ./internal/contract -run '^TestProtoc' -count=1 -v
           PATH="$RUNNER_TEMP/protoc/bin:$PATH" bash scripts/test-custom-options.sh
+          PATH="$RUNNER_TEMP/protoc/bin:$PATH" bash scripts/test-editions.sh
 
       - name: Check reachable Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...

@@ -48,6 +48,7 @@ verify_zip(root / f'go/github.com/dunkymole/proto-contract/@v/v{version}.zip',
            [prefix + 'go.mod', prefix + 'runtimes/go/protocontract/interceptor.go',
             prefix + 'internal/contract/testdata/options/policy.proto',
             prefix + 'internal/contract/testdata/options/service.proto',
+            prefix + 'internal/contract/testdata/editions/service.proto',
             prefix + 'runtimes/contract-vectors.json'], prefix + 'LICENSE')
 
 verify_zip(root / f'dotnet/ProtoContract.AspNetCore.{version}.nupkg',

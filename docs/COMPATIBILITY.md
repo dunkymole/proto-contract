@@ -34,7 +34,7 @@ The metadata parser is shared across runtimes: the API is 1–64 ASCII character
 
 Field comparison also includes label, referenced type, JSON name, oneof membership, proto3 optional presence, and explicit default values. Default changes require a major bump. Enum values are keyed by name, so aliases sharing a number remain distinct and removing, renaming, or reordering aliases requires a major bump. The default enum name and alias order for each numeric value are captured because they affect implicit values and canonical JSON names. Field and distinct-number enum declaration order is normalized. The digest excludes the lock's version; it identifies the captured structure rather than the application release.
 
-Format 2 supports proto2 and proto3 declarations reachable from the selected service, including field defaults, enum aliases, streaming shape, oneofs, proto3 optional fields, reserved declarations, and deterministic fingerprints of standard descriptor options. Option or reserved declaration changes are conservatively major. Resolvable custom options are supported as described below; unknown or uninterpreted options still fail closed. Edition syntax, groups, and data-message extensions that affect reachable declarations remain unsupported. Unrelated declarations do not affect the service graph; custom-option definition files have the broader fingerprint scope described below.
+Format 2 supports proto2, proto3, and the Edition 2023 subset below for declarations reachable from the selected service, including field defaults, enum aliases, streaming shape, oneofs, proto3 optional fields, reserved declarations, and deterministic fingerprints of standard descriptor options. Option or reserved declaration changes are conservatively major. Resolvable custom options are supported as described below; unknown or uninterpreted options still fail closed. Groups and data-message extensions that affect reachable declarations remain unsupported. Unrelated declarations do not affect the service graph; custom-option definition files have the broader fingerprint scope described below.
 
 ## Custom options
 
@@ -44,7 +44,10 @@ extension definitions are available. This includes scalar, repeated, enum and
 message-valued annotations such as validation rules and HTTP bindings. Nested
 message values, maps and extension values are decoded against those definitions;
 unknown fields, undefined enum numbers, malformed values, missing imports and
-uninterpreted options are rejected. Group-valued annotations are unsupported.
+uninterpreted options are rejected. Distinct extension definitions cannot claim
+the same extendee and field number, including definitions nested in messages or
+imported from different files: that would make option decoding ambiguous.
+Group-valued annotations are unsupported.
 
 Every custom-option addition, removal or value change requires a **major** API
 contract bump, including options on newly added declarations. This first increment
@@ -73,9 +76,7 @@ at build time; Protobuf-ES's runtime graph remains a structural projection and
 does not revalidate custom annotations at runtime. Native generated bindings also
 carry the checked API version rather than evaluating annotations on each call.
 
-Protobuf editions and inherited edition features remain a separate increment of
-[#1](https://github.com/dunkymole/proto-contract/issues/1), with the existing
-unsupported-feature errors retained.
+Edition 2023 support is described below; later editions and language-specific edition features remain unsupported.
 
 The policy is intentionally stricter than protobuf wire compatibility because generated source compatibility matters to application developers.
 
@@ -91,3 +92,13 @@ Descriptors cannot reveal every breaking behavior change. The `update --bump` ar
 - Business meaning, validation performed outside protobuf descriptors, and behavior changes inside handlers cannot be inferred; use `update --bump` to raise the version for those changes.
 - All four native RPC shapes are enforced by Python, Go, Java, and .NET. The TypeScript grpc-bridge client stamps all four shapes; it relies on the native gRPC server for enforcement. Strict server dispatchers own service-to-contract registration and reject an unregistered service before its handler runs; intentional exemptions must be explicit.
 - Lock format 2 is the only supported format for this pre-release. Format 1 and unknown future formats fail with an explicit unsupported-format error. A future format change will be introduced as a deliberate compiler release with a documented parser and transition policy; API semantic versions describe schema compatibility and do not encode the lock serialization format.
+
+### Protobuf Edition 2023
+
+Edition 2023 is supported with the six core features: field presence (EXPLICIT by default), enum type (OPEN), repeated encoding (PACKED), UTF-8 validation (VERIFY), message encoding (LENGTH_PREFIXED), and JSON format (ALLOW). These defaults and lexical overrides are captured as resolved feature configuration in `edition-features` fingerprints on every reachable message, field, and enum. Core feature options are normalized into these effective records; redundant explicit defaults and relocating an override without changing any effective setting keep the same digest. Complete resolved settings are authoritative in a lock; generation rechecks them against the exact source descriptors. Raw FeatureSet option payloads in locks are rejected. Feature changes and removals require a major bump; ordinary optional-field additions retain the minor policy. Required enum fields expressed using LEGACY_REQUIRED retain the required-field enum policy.
+
+Feature overrides follow the [official Edition 2023 targets](https://protobuf.dev/editions/features/): file/field for presence, repeated encoding, UTF-8 validation, and message encoding; file/enum for enum type; file/message/enum for JSON format. File and enclosing-message JSON settings are inherited; fields and enums use their nearest applicable override. Wrong scopes, unknown values, unknown feature bytes, language-specific feature extensions, later editions, legacy packed/required/proto3_optional declarations in editions, and edition-based custom-option definition files fail closed. Imported Edition 2023 request/response declarations are supported. The runtime graph verifies presence, packing, UTF-8 behavior, enum openness, and message encoding; JSON policy remains a descriptor-lock check.
+
+Use a compiler with Edition 2023 support (CI pins protoc 33.0). The CLI and protoc plugin share the same descriptor analysis; the plugin advertises only Edition 2023. Native binding generators and runtimes must themselves support the edition being compiled. Descriptor analysis does not prove arbitrary application behavior compatibility.
+
+Resolved configuration records the inherited feature policy; protobuf still applies field-kind rules, such as explicit presence for messages and oneofs and no presence for repeated fields. Runtime projection uses those actual descriptor behaviors.

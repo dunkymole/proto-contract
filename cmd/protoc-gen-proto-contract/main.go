@@ -10,6 +10,7 @@ import (
 
 	"github.com/dunkymole/proto-contract/internal/contract"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
@@ -35,7 +36,9 @@ func main() {
 	if err != nil {
 		response = &pluginpb.CodeGeneratorResponse{Error: proto.String(err.Error())}
 	} else {
-		response.SupportedFeatures = proto.Uint64(uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL))
+		response.SupportedFeatures = proto.Uint64(uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL | pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS))
+		response.MinimumEdition = proto.Int32(int32(descriptorpb.Edition_EDITION_2023))
+		response.MaximumEdition = proto.Int32(int32(descriptorpb.Edition_EDITION_2023))
 	}
 	encoded, err := proto.Marshal(response)
 	if err != nil {
