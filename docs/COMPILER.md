@@ -159,4 +159,4 @@ Go package needs to be linked into the compiler. Locks retain checked definition
 and values, so lock-only validation/generation needs no network or external schema
 registry. Every custom-option change conservatively requires a major API bump.
 See [custom-option scope](COMPATIBILITY.md#custom-options) before using validation
-or HTTP annotations. Editions remain unsupported.
+or HTTP annotations. Edition 2023 core features use canonical resolved settings; compile with an edition-capable protoc (CI pins 33.0). CLI and plugin generation share this policy. See [edition scope](COMPATIBILITY.md#protobuf-edition-2023) for supported values and fail-closed limitations.

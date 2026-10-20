@@ -55,6 +55,7 @@ COPY proto /proto
 COPY contracts/demo.echo.json /contracts/demo.echo.json
 COPY contracts/typescript-bindings.json contracts/demo.echo.json ./contracts/
 COPY tests/strict-package ./tests/strict-package
+COPY tests/editions-package ./tests/editions-package
 COPY examples/rollout /app/rollout
 COPY scripts/check-rollout-versions.sh /app/rollout/check-rollout-versions.sh
 COPY scripts/ci-contract-check.sh /app/scripts/ci-contract-check.sh
@@ -73,5 +74,6 @@ RUN mkdir -p gen contracts && protoc -I /proto \
     sh rollout/generate-clients.sh && \
     sh rollout/check-rollout-versions.sh /app && \
     bash scripts/test-ci-contract-check.sh && \
-    npm run check && npm test && NODE_MODULES=/app/node_modules sh tests/strict-package/run.sh
+    npm run check && npm test && NODE_MODULES=/app/node_modules sh tests/strict-package/run.sh && \
+    NODE_MODULES=/app/node_modules sh tests/editions-package/run.sh
 CMD ["npm", "start"]
