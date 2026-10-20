@@ -2,6 +2,10 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
+## Unreleased
+
+- Add checked version updates, read-only candidate preparation, explicit promotion of tested artifacts, resumable publication and public-download/Go verification, with a next-version dry run.
+
 ## 0.4.0 (2026-10-20)
 
 - Resolve imported custom protobuf options, retain checked definitions and values in contract locks, and require a major contract bump for annotation changes. Validate source-retained plugin options without adding edition support.

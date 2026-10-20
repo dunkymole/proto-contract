@@ -1,0 +1,25 @@
+{
+  "version": "0.4.0",
+  "targets": {
+    "README.md": 2,
+    "docs/COMPILER.md": 1,
+    "docs/RUNTIMES.md": 2,
+    "docs/PACKAGES.md": 18,
+    "runtimes/dotnet/ProtoContract.Runtime.csproj": 1,
+    "runtimes/dotnet/README.md": 1,
+    "runtimes/dotnet-aspnetcore/ProtoContract.AspNetCore.csproj": 1,
+    "runtimes/dotnet-aspnetcore/README.md": 1,
+    "runtimes/java/pom.xml": 1,
+    "runtimes/java/README.md": 1,
+    "runtimes/python/pyproject.toml": 1,
+    "runtimes/python/README.md": 1,
+    "examples/clients/dotnet/ProtoContractClientDemo.csproj": 1,
+    "examples/clients/go/Dockerfile": 1,
+    "examples/clients/java/Dockerfile": 2,
+    "examples/clients/java/pom.xml": 2,
+    "examples/servers/dotnet/ProtoContractServerDemo.csproj": 2,
+    "examples/servers/go/Dockerfile": 1,
+    "examples/servers/java/Dockerfile": 2,
+    "examples/servers/java/pom.xml": 2
+  }
+}

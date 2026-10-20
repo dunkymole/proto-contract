@@ -5,10 +5,10 @@ import zipfile
 
 root = pathlib.Path('/source')
 module = 'github.com/dunkymole/proto-contract'
-version = 'v0.4.0'
+version = 'v' + json.loads((root / 'release.json').read_text())['version']
 out = pathlib.Path('/packages/go') / module / '@v'
 out.mkdir(parents=True, exist_ok=True)
-files = [root / 'go.mod', root / 'go.sum', root / 'LICENSE', root / 'README.md',
+files = [root / 'go.mod', root / 'go.sum', root / 'LICENSE', root / 'README.md', root / 'release.json',
          root / 'runtimes/contract-vectors.json', root / 'contracts/demo.echo.json']
 for directory in ('cmd', 'internal', 'runtimes/go'):
     files.extend(sorted((root / directory).rglob('*.go')))

@@ -12,7 +12,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def prepare(packages, destination):
+def prepare(packages, destination, metadata=None, notes=None):
     manifest = json.loads((packages / 'manifest.json').read_text(encoding='utf-8-sig'))
     version = manifest['adapterVersion']
     if not re.fullmatch(r'\d+\.\d+\.\d+', version):
@@ -61,6 +61,9 @@ def prepare(packages, destination):
                 entry.external_attr = 0o100644 << 16
                 archive.writestr(entry, (packages / name).read_bytes())
         (staging / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+        if metadata is not None:
+            (staging / 'candidate.json').write_text(json.dumps(metadata, indent=2) + '\n', encoding='utf-8')
+            (staging / 'RELEASE_NOTES.md').write_text(notes, encoding='utf-8')
         sums = [f'{digest(file)}  {file.name}\n' for file in sorted(staging.iterdir())]
         (staging / 'SHA256SUMS').write_text(''.join(sums), encoding='utf-8')
         staging.rename(destination)

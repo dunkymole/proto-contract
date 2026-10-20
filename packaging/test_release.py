@@ -18,15 +18,15 @@ class ReleaseTests(unittest.TestCase):
         self.root = pathlib.Path(self.temp.name)
         self.packages = self.root / 'packages'
         names = [
-            'python/proto_contract_runtime-0.4.0-py3-none-any.whl',
-            'python/proto_contract_runtime-0.4.0.tar.gz',
-            'dotnet/ProtoContract.Runtime.0.4.0.nupkg', 'java/pom.xml',
-            'dotnet/ProtoContract.AspNetCore.0.4.0.nupkg',
-            *[f'java/proto-contract-runtime-0.4.0{suffix}.jar' for suffix in ('', '-sources', '-javadoc')],
-            *[f'go/github.com/dunkymole/proto-contract/@v/v0.4.0.{suffix}' for suffix in ('zip', 'mod', 'info')],
+            'python/proto_contract_runtime-7.8.9-py3-none-any.whl',
+            'python/proto_contract_runtime-7.8.9.tar.gz',
+            'dotnet/ProtoContract.Runtime.7.8.9.nupkg', 'java/pom.xml',
+            'dotnet/ProtoContract.AspNetCore.7.8.9.nupkg',
+            *[f'java/proto-contract-runtime-7.8.9{suffix}.jar' for suffix in ('', '-sources', '-javadoc')],
+            *[f'go/github.com/dunkymole/proto-contract/@v/v7.8.9.{suffix}' for suffix in ('zip', 'mod', 'info')],
             'go/github.com/dunkymole/proto-contract/@v/list',
         ]
-        self.manifest = {'adapterVersion': '0.4.0', 'sourceRevision': 'a' * 40,
+        self.manifest = {'adapterVersion': '7.8.9', 'sourceRevision': 'a' * 40,
                          'sourceHasChanges': False, 'artifacts': []}
         for name in names:
             path = self.packages / name
@@ -40,7 +40,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_release_layout_checksums_and_repeatability(self):
         first, second = self.root / 'first', self.root / 'second'
-        self.assertEqual(release.prepare(self.packages, first), '0.4.0')
+        self.assertEqual(release.prepare(self.packages, first), '7.8.9')
         release.prepare(self.packages, second)
         checksums = (first / 'SHA256SUMS').read_text().splitlines()
         self.assertEqual(len(checksums), 10)
@@ -48,10 +48,10 @@ class ReleaseTests(unittest.TestCase):
             checksum, name = line.split('  ')
             self.assertEqual(hashlib.sha256((first / name).read_bytes()).hexdigest(), checksum)
             self.assertEqual((first / name).read_bytes(), (second / name).read_bytes())
-        with zipfile.ZipFile(first / 'proto-contract-go-proxy-0.4.0.zip') as archive:
-            self.assertIn('github.com/dunkymole/proto-contract/@v/v0.4.0.mod', archive.namelist())
-        self.assertTrue((first / 'proto-contract-runtime-0.4.0.pom').is_file())
-        self.assertTrue((first / 'ProtoContract.AspNetCore.0.4.0.nupkg').is_file())
+        with zipfile.ZipFile(first / 'proto-contract-go-proxy-7.8.9.zip') as archive:
+            self.assertIn('github.com/dunkymole/proto-contract/@v/v7.8.9.mod', archive.namelist())
+        self.assertTrue((first / 'proto-contract-runtime-7.8.9.pom').is_file())
+        self.assertTrue((first / 'ProtoContract.AspNetCore.7.8.9.nupkg').is_file())
 
     def test_modified_package_is_rejected(self):
         (self.packages / 'java/pom.xml').write_text('tampered')
@@ -74,7 +74,7 @@ class ReleaseTests(unittest.TestCase):
         self.write_manifest()
         with self.assertRaisesRegex(ValueError, 'versions'):
             release.prepare(self.packages, self.root / 'out')
-        self.manifest['adapterVersion'] = '0.4.0'
+        self.manifest['adapterVersion'] = '7.8.9'
         self.write_manifest()
         release.prepare(self.packages, self.root / 'out')
         with self.assertRaisesRegex(ValueError, 'already exists'):
