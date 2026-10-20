@@ -2,10 +2,13 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
-## Unreleased
+## 0.5.0 (2026-10-20)
 
+- Support Edition 2023's six core protobuf features with pinned defaults, lexical inheritance, canonical contract fingerprints, and matching CLI/protoc-plugin generation. Equivalent resolved settings retain the same digest; feature changes require a major API contract bump.
+- Verify Edition 2023 runtime graphs against genuine Protobuf-ES bindings, including stale UTF-8 policy rejection. Later editions, language-specific features, invalid combinations, and edition-based custom-option definitions continue to fail closed.
+- Reject ambiguous custom-option extension numbers in imported and nested definitions, both when building contracts and validating supplied locks.
+- Align compiler/runtime packages, consumer examples, and installation references at this release. Existing proto2/proto3 locks retain their semantics; Edition 2023 locks require this compiler or newer. Native protobuf binding generators and runtimes must also support the edition.
 - Add checked version updates, read-only candidate preparation, explicit promotion of tested artifacts, resumable publication and public-download/Go verification, with a next-version dry run.
-- Support the six core Edition 2023 features with canonical defaults and inheritance, fail-closed scope/value validation, matching CLI/plugin behavior, and runtime graph checks.
 
 ## 0.4.0 (2026-10-20)
 
