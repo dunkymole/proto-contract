@@ -70,7 +70,7 @@ class ReleaseTests(unittest.TestCase):
             release.prepare(self.packages, self.root / 'out')
 
     def test_version_mismatch_and_reused_destination_are_rejected(self):
-        self.manifest['adapterVersion'] = '0.4.0'
+        self.manifest['adapterVersion'] = '99.0.0'
         self.write_manifest()
         with self.assertRaisesRegex(ValueError, 'versions'):
             release.prepare(self.packages, self.root / 'out')
