@@ -163,7 +163,7 @@ func Validate(s *Snapshot) error {
 		if m.Fields == nil {
 			return fmt.Errorf("fields for message %q must be present", m.Name)
 		}
-		if m.Syntax != "proto2" && m.Syntax != "proto3" {
+		if m.Syntax != "proto2" && m.Syntax != "proto3" && m.Syntax != "editions" {
 			return fmt.Errorf("invalid syntax %q for message %s", m.Syntax, m.Name)
 		}
 		messages[m.Name] = m
@@ -181,7 +181,7 @@ func Validate(s *Snapshot) error {
 		if e.Values == nil {
 			return fmt.Errorf("values for enum %q must be present", e.Name)
 		}
-		if e.Syntax != "proto2" && e.Syntax != "proto3" {
+		if e.Syntax != "proto2" && e.Syntax != "proto3" && e.Syntax != "editions" {
 			return fmt.Errorf("invalid syntax %q for enum %s", e.Syntax, e.Name)
 		}
 		enums[e.Name] = e
@@ -262,7 +262,7 @@ func Validate(s *Snapshot) error {
 				}
 			}
 			if field.HasDefault {
-				if message.Syntax != "proto2" || field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED.String() || field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.String() || field.Type == descriptorpb.FieldDescriptorProto_TYPE_GROUP.String() {
+				if (message.Syntax != "proto2" && message.Syntax != "editions") || field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED.String() || field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.String() || field.Type == descriptorpb.FieldDescriptorProto_TYPE_GROUP.String() {
 					return fmt.Errorf("field %s.%s cannot declare a default with its syntax, label, or type", message.Name, field.Name)
 				}
 				if field.Oneof != "" {
@@ -401,6 +401,9 @@ func Validate(s *Snapshot) error {
 			return fmt.Errorf("enum %s has duplicate numeric values without allow_alias", enum.Name)
 		}
 	}
+	if err := validateEditionSnapshot(s); err != nil {
+		return err
+	}
 	digest, err := calculateDigest(s)
 	if err != nil {
 		return err
@@ -470,6 +473,8 @@ func validateFeature(snapshot *Snapshot, feature Feature, types *dynamicpb.Types
 	}
 	var message proto.Message
 	switch kind {
+	case "edition-features":
+		message = &descriptorpb.FeatureSet{}
 	case "file-options":
 		message = &descriptorpb.FileOptions{}
 	case "service-options":
@@ -597,6 +602,14 @@ func validateFeature(snapshot *Snapshot, feature Feature, types *dynamicpb.Types
 		})
 		if count == 0 || !onlyExtensions {
 			return fmt.Errorf("custom option feature %q must contain only extension values", feature.Name)
+		}
+	}
+	if err := validateEditionOptionFeature(snapshot, kind, owner, message); err != nil {
+		return err
+	}
+	if kind == "edition-features" {
+		if err := validateEditionFeature(snapshot, owner, message.(*descriptorpb.FeatureSet)); err != nil {
+			return err
 		}
 	}
 	canonical, err := (proto.MarshalOptions{Deterministic: true}).Marshal(message)

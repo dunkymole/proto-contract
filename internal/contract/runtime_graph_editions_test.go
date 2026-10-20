@@ -33,9 +33,8 @@ func TestRuntimeGraphEdition2023DefaultsAndInheritance(t *testing.T) {
 				request.Field[0].Options = &descriptorpb.FieldOptions{Features: &descriptorpb.FeatureSet{FieldPresence: descriptorpb.FeatureSet_EXPLICIT.Enum()}}
 			}
 			if mode == "nearest overrides" {
-				request.Options = &descriptorpb.MessageOptions{Features: &descriptorpb.FeatureSet{
-					Utf8Validation: descriptorpb.FeatureSet_VERIFY.Enum(), RepeatedFieldEncoding: descriptorpb.FeatureSet_PACKED.Enum(), FieldPresence: descriptorpb.FeatureSet_EXPLICIT.Enum(),
-				}}
+				request.Field[1].Options = &descriptorpb.FieldOptions{Features: &descriptorpb.FeatureSet{Utf8Validation: descriptorpb.FeatureSet_VERIFY.Enum(), FieldPresence: descriptorpb.FeatureSet_EXPLICIT.Enum()}}
+				request.Field[2].Options = &descriptorpb.FieldOptions{Features: &descriptorpb.FeatureSet{RepeatedFieldEncoding: descriptorpb.FeatureSet_PACKED.Enum()}}
 				file.EnumType[0].Options = &descriptorpb.EnumOptions{Features: &descriptorpb.FeatureSet{EnumType: descriptorpb.FeatureSet_OPEN.Enum()}}
 				wantUTF8, wantOpen, wantPacked, wantPresence = true, true, true, "EXPLICIT"
 			}

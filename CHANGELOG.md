@@ -4,7 +4,8 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 ## 0.4.0 (2026-10-20)
 
-- Resolve imported custom protobuf options, retain checked definitions and values in contract locks, and require a major contract bump for annotation changes. Validate source-retained plugin options without adding edition support.
+- Resolve imported custom protobuf options, retain checked definitions and values in contract locks, and require a major contract bump for annotation changes. Validate source-retained plugin options.
+- Support the six core Edition 2023 features with canonical defaults and inheritance, fail-closed scope/value validation, matching CLI/plugin behavior, and runtime graph checks.
 
 ## 0.3.0 (2026-10-19)
 

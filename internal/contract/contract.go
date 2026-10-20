@@ -158,6 +158,7 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 			s.Features = append(s.Features, Feature{Name: "custom-" + name, Value: hex.EncodeToString(b)})
 		}
 		message = standard
+		clearOptionFeatures(message)
 		if proto.Size(message) == 0 {
 			return nil
 		}
@@ -324,6 +325,9 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 	if definitions != nil {
 		s.Features = append(s.Features, *definitions)
 	}
+	if err := addEditionFeatures(s, &idx, usedFiles); err != nil {
+		return nil, err
+	}
 	sort.Slice(s.Features, func(i, j int) bool { return s.Features[i].Name < s.Features[j].Name })
 	sort.Slice(s.Messages, func(i, j int) bool { return s.Messages[i].Name < s.Messages[j].Name })
 	sort.Slice(s.Enums, func(i, j int) bool { return s.Enums[i].Name < s.Enums[j].Name })
@@ -377,6 +381,9 @@ func validateDescriptorFile(file *descriptorpb.FileDescriptorProto) error {
 	syntax := file.GetSyntax()
 	if syntax == "" {
 		syntax = "proto2"
+	}
+	if syntax == "editions" && file.GetEdition() == descriptorpb.Edition_EDITION_2023 {
+		return nil
 	}
 	if syntax != "proto2" && syntax != "proto3" || file.GetEdition() != descriptorpb.Edition_EDITION_UNKNOWN {
 		return fmt.Errorf("unsupported protobuf feature %q in %s; remove it or extend the contract format and classifier", "syntax "+file.GetSyntax(), file.GetName())
@@ -587,6 +594,17 @@ func featureAdditionBump(old, cur *Snapshot, feature string) Bump {
 	}
 	owner := parts[1]
 	switch parts[0] {
+	case "edition-features":
+		if _, ok := findMessage(cur, owner); ok {
+			return featureAdditionBump(old, cur, "message-options:"+owner)
+		}
+		if _, ok := findEnum(cur, owner); ok {
+			return featureAdditionBump(old, cur, "enum-options:"+owner)
+		}
+		if editionFieldRequired(cur, owner) {
+			return Major
+		}
+		return featureAdditionBump(old, cur, "field-options:"+owner)
 	case "message-options", "message-declarations":
 		for _, message := range old.Messages {
 			if message.Name == owner {
@@ -675,7 +693,7 @@ func splitMember(name string) (string, string, bool) {
 func enumUsedByRequiredField(s *Snapshot, enum string) bool {
 	for _, message := range s.Messages {
 		for _, field := range message.Fields {
-			if field.Type == descriptorpb.FieldDescriptorProto_TYPE_ENUM.String() && field.TypeName == enum && field.Label == descriptorpb.FieldDescriptorProto_LABEL_REQUIRED.String() {
+			if field.Type == descriptorpb.FieldDescriptorProto_TYPE_ENUM.String() && field.TypeName == enum && (field.Label == descriptorpb.FieldDescriptorProto_LABEL_REQUIRED.String() || editionFieldRequired(s, message.Name+"."+field.Name)) {
 				return true
 			}
 		}
