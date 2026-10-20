@@ -2,7 +2,7 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
-## Unreleased
+## 0.4.0 (2026-10-20)
 
 - Resolve imported custom protobuf options, retain checked definitions and values in contract locks, and require a major contract bump for annotation changes. Validate source-retained plugin options without adding edition support.
 

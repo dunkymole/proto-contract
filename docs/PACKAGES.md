@@ -1,6 +1,6 @@
-# Runtime packages — v0.3.0
+# Runtime packages — v0.4.0
 
-Runtime packages are published as [v0.3.0 GitHub Release assets](https://github.com/dunkymole/proto-contract/releases/tag/v0.3.0). Python, Java and .NET packages are downloaded from that release; they are not published to PyPI, Maven Central or NuGet.org. Go uses the public repository tag. Package version `0.3.0` versions the adapter
+Runtime packages are published as [v0.4.0 GitHub Release assets](https://github.com/dunkymole/proto-contract/releases/tag/v0.4.0). Python, Java and .NET packages are downloaded from that release; they are not published to PyPI, Maven Central or NuGet.org. Go uses the public repository tag. Package version `0.4.0` versions the adapter
 implementation, independently of the API version in each generated contract lock.
 
 | Language | Coordinate | Build/test baseline | Dependency policy |
@@ -18,26 +18,26 @@ release version; any future independent releases must retain generated public
 API compatibility or document the required compiler upgrade.
 
 The Go minimum was raised for patched dependencies and standard-library fixes.
-Go 1.22–1.25 consumers must upgrade their toolchain before using v0.3.0. CI and
+Go 1.22–1.25 consumers must upgrade their toolchain before using v0.4.0. CI and
 release preparation run govulncheck v1.9.0 against the current vulnerability
 database and fail for reachable findings. A clean scan covers the analyzed Go
 source graph; it is not a security audit of every language package or deployment.
 
-## Install v0.3.0
+## Install v0.4.0
 
 Download the packages, `manifest.json` and `SHA256SUMS` from the
-[v0.3.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.3.0).
+[v0.4.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.4.0).
 From the download directory, verify `sha256sum --check SHA256SUMS`, then install
 the packages you need:
 
 ```sh
-python -m pip install ./proto_contract_runtime-0.3.0-py3-none-any.whl
-mvn install:install-file -Dfile=proto-contract-runtime-0.3.0.jar -DpomFile=proto-contract-runtime-0.3.0.pom
+python -m pip install ./proto_contract_runtime-0.4.0-py3-none-any.whl
+mvn install:install-file -Dfile=proto-contract-runtime-0.4.0.jar -DpomFile=proto-contract-runtime-0.4.0.pom
 dotnet nuget add source /absolute/path/to/downloads --name proto-contract-release
-dotnet add package ProtoContract.Runtime --version 0.3.0
+dotnet add package ProtoContract.Runtime --version 0.4.0
 # ASP.NET Core servers also install:
-dotnet add package ProtoContract.AspNetCore --version 0.3.0
-go get github.com/dunkymole/proto-contract@v0.3.0
+dotnet add package ProtoContract.AspNetCore --version 0.4.0
+go get github.com/dunkymole/proto-contract@v0.4.0
 ```
 
 Keep NuGet.org enabled for transitive dependencies. Maven installs the downloaded
@@ -46,12 +46,9 @@ normal module checksum verification; do not set `GONOSUMDB` for published use.
 The Go file-proxy ZIP is only a local testing convenience, and its contents and
 module checksum can differ from the canonical public module ZIP.
 
-The release was built from clean commit
-`6108813bfedb46e7cf92a1178e915e2c2eadb28b` by
-[the package validation workflow](https://github.com/dunkymole/proto-contract/actions/runs/39204971566).
-Clean-consumer tests passed, the published assets were downloaded and their
-checksums verified, and the Go tag was fetched through the public module proxy
-with checksum verification enabled.
+The release manifest records the exact clean source commit and package hashes.
+Release preparation validates clean consumers and checksums before publication.
+The release notes link the validation run for the published source revision.
 
 ## Build and verify without publication
 
@@ -72,7 +69,7 @@ checks cover all four RPC shapes, invalid metadata, service isolation and strict
 dispatch. The Python server also runs its generated-server unit tests.
 
 The Go artifact uses the existing root module, preserving generated imports.
-The published `v0.3.0` tag resolves to commit `6108813bfedb46e7cf92a1178e915e2c2eadb28b`. Earlier releases and tags remain unchanged. The proxy archive contains
+The public module uses the matching release tag. Earlier releases and tags remain unchanged. The proxy archive contains
 the compiler, runtime and Go test fixtures. Consumer-generated bindings belong to
 the application's own module; the matrix uses a separate `starter.local/demo`
 module and rewrites demo imports to that consumer module.
@@ -90,11 +87,11 @@ To install the local artifacts in your own project:
 
 ```sh
 python -m pip install artifacts/packages/python/*.whl
-mvn install:install-file -Dfile=artifacts/packages/java/proto-contract-runtime-0.3.0.jar -DpomFile=artifacts/packages/java/pom.xml
+mvn install:install-file -Dfile=artifacts/packages/java/proto-contract-runtime-0.4.0.jar -DpomFile=artifacts/packages/java/pom.xml
 dotnet nuget add source /absolute/path/to/artifacts/packages/dotnet --name proto-contract-local
-dotnet add package ProtoContract.Runtime --version 0.3.0
+dotnet add package ProtoContract.Runtime --version 0.4.0
 # ASP.NET Core servers also install:
-dotnet add package ProtoContract.AspNetCore --version 0.3.0
+dotnet add package ProtoContract.AspNetCore --version 0.4.0
 ```
 
 Keep NuGet.org enabled for the transitive gRPC dependency. The container examples
@@ -102,7 +99,7 @@ use `packaging/NuGet.Config` to map the runtime specifically to the local feed.
 
 For Go, use a fresh `GOMODCACHE`, set `GOPROXY=file:///absolute/path/to/artifacts/packages/go,https://proxy.golang.org`
 and `GONOSUMDB=github.com/dunkymole/proto-contract` in an isolated test environment,
-then `go get github.com/dunkymole/proto-contract@v0.3.0`. This bypass is only for
+then `go get github.com/dunkymole/proto-contract@v0.4.0`. This bypass is only for
 the unpublished local artifact; normal published consumption must use checksums.
 
 Generate each service binding from its build's checked lock, then follow
@@ -160,13 +157,15 @@ It also refuses an existing output directory: use `--out` with a fresh destinati
 for subsequent preparations. Checksums detect corrupted downloads; they are not
 cryptographic signatures or an independent proof of publisher identity.
 
-The published package version is **v0.3.0**. Its release includes the packages, clean-source manifest and `SHA256SUMS`.
-This minor release includes inferred native bindings, typed client factories,
-combined server registration and the ASP.NET Core integration package. Upgrade
-compiler and runtime packages together when regenerating these helpers; earlier
-runtimes do not provide their new builder APIs. The RPC metadata format and API
-contract compatibility policy are unchanged. This package bump does not require
-bumping application contract locks.
+The published package version is **v0.4.0**. Its release includes the packages, clean-source manifest and `SHA256SUMS`.
+This minor release adds checked custom-option support to the compiler, including
+imported validation and HTTP annotations and source-retained options. Custom-option
+changes conservatively require a major API contract bump. New annotated locks
+require the v0.4.0 compiler; v0.3.0 and earlier reject their feature kinds.
+Unannotated locks and the RPC metadata format retain their existing semantics.
+The runtime packages remain version-aligned with the compiler. Editions remain
+unsupported and will be developed separately. The package bump alone does not
+require changing application contract versions.
 For subsequent versions, update the Python/Java/.NET package metadata, Go proxy
 builder, consumer dependency versions, build manifest version and package
 verification fixtures together. Commit the tested source and create its matching
