@@ -88,8 +88,15 @@ func CompileDescriptorSet(protoc, protoPath, protoFile string) (*descriptorpb.Fi
 	}
 	tmp.Close()
 	defer os.Remove(tmp.Name())
-	cmd := exec.Command(protoc, "--proto_path="+protoPath, "--include_imports", "--descriptor_set_out="+tmp.Name(), protoFile)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	args := []string{"--proto_path=" + protoPath, "--include_imports", "--descriptor_set_out=" + tmp.Name(), "--retain_options", protoFile}
+	out, err := exec.Command(protoc, args...).CombinedOutput()
+	// Before protoc 23, source-retention stripping and this flag did not exist.
+	// Only retry that precise capability error; never retry a schema failure.
+	if err != nil && strings.Contains(string(out), "Unknown flag: --retain_options") {
+		args = append(args[:3], protoFile)
+		out, err = exec.Command(protoc, args...).CombinedOutput()
+	}
+	if err != nil {
 		return nil, fmt.Errorf("protoc failed: %s: %w", strings.TrimSpace(string(out)), err)
 	}
 	b, err := os.ReadFile(tmp.Name())
@@ -134,16 +141,23 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 	}
 	usedFiles := map[*descriptorpb.FileDescriptorProto]bool{idx.files[serviceName]: true}
 	s := &Snapshot{Format: 2, API: api, Version: version, Service: Service{Name: serviceName, Methods: []Method{}}, Messages: []Message{}, Enums: []Enum{}}
+	options := &optionCollector{set: set}
 	addFeature := func(name string, message proto.Message) error {
 		if message == nil {
 			return nil
 		}
-		if len(message.ProtoReflect().GetUnknown()) != 0 {
-			return fmt.Errorf("unsupported protobuf feature %q; custom or unrecognized descriptor options require a registered classifier", name)
+		standard, custom, err := options.split(message)
+		if err != nil {
+			return fmt.Errorf("descriptor feature %q: %w", name, err)
 		}
-		if field := message.ProtoReflect().Descriptor().Fields().ByName("uninterpreted_option"); field != nil && message.ProtoReflect().Has(field) && message.ProtoReflect().Get(field).List().Len() != 0 {
-			return fmt.Errorf("unsupported protobuf feature %q; uninterpreted descriptor options require a registered classifier", name)
+		if custom != nil && proto.Size(custom) != 0 {
+			b, err := (proto.MarshalOptions{Deterministic: true}).Marshal(custom)
+			if err != nil {
+				return err
+			}
+			s.Features = append(s.Features, Feature{Name: "custom-" + name, Value: hex.EncodeToString(b)})
 		}
+		message = standard
 		if proto.Size(message) == 0 {
 			return nil
 		}
@@ -302,6 +316,13 @@ func Build(set *descriptorpb.FileDescriptorSet, serviceName, api, version string
 				return nil, fmt.Errorf("unsupported protobuf feature %q in %s; remove it or extend the contract format and classifier", "extensions targeting reachable declarations", file.GetName())
 			}
 		}
+	}
+	definitions, err := options.definitions()
+	if err != nil {
+		return nil, err
+	}
+	if definitions != nil {
+		s.Features = append(s.Features, *definitions)
 	}
 	sort.Slice(s.Features, func(i, j int) bool { return s.Features[i].Name < s.Features[j].Name })
 	sort.Slice(s.Messages, func(i, j int) bool { return s.Messages[i].Name < s.Messages[j].Name })

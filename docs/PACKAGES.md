@@ -1,7 +1,6 @@
-# Runtime packages (unpublished)
+# Runtime packages — v0.3.0
 
-These are proposed package coordinates. This repository builds them locally; no
-registry availability is implied. Package version `0.3.0` versions the adapter
+Runtime packages are published as [v0.3.0 GitHub Release assets](https://github.com/dunkymole/proto-contract/releases/tag/v0.3.0). Python, Java and .NET packages are downloaded from that release; they are not published to PyPI, Maven Central or NuGet.org. Go uses the public repository tag. Package version `0.3.0` versions the adapter
 implementation, independently of the API version in each generated contract lock.
 
 | Language | Coordinate | Build/test baseline | Dependency policy |
@@ -24,6 +23,36 @@ release preparation run govulncheck v1.9.0 against the current vulnerability
 database and fail for reachable findings. A clean scan covers the analyzed Go
 source graph; it is not a security audit of every language package or deployment.
 
+## Install v0.3.0
+
+Download the packages, `manifest.json` and `SHA256SUMS` from the
+[v0.3.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.3.0).
+From the download directory, verify `sha256sum --check SHA256SUMS`, then install
+the packages you need:
+
+```sh
+python -m pip install ./proto_contract_runtime-0.3.0-py3-none-any.whl
+mvn install:install-file -Dfile=proto-contract-runtime-0.3.0.jar -DpomFile=proto-contract-runtime-0.3.0.pom
+dotnet nuget add source /absolute/path/to/downloads --name proto-contract-release
+dotnet add package ProtoContract.Runtime --version 0.3.0
+# ASP.NET Core servers also install:
+dotnet add package ProtoContract.AspNetCore --version 0.3.0
+go get github.com/dunkymole/proto-contract@v0.3.0
+```
+
+Keep NuGet.org enabled for transitive dependencies. Maven installs the downloaded
+JAR and POM into your local repository. Go uses the public repository tag and
+normal module checksum verification; do not set `GONOSUMDB` for published use.
+The Go file-proxy ZIP is only a local testing convenience, and its contents and
+module checksum can differ from the canonical public module ZIP.
+
+The release was built from clean commit
+`6108813bfedb46e7cf92a1178e915e2c2eadb28b` by
+[the package validation workflow](https://github.com/dunkymole/proto-contract/actions/runs/39204971566).
+Clean-consumer tests passed, the published assets were downloaded and their
+checksums verified, and the Go tag was fetched through the public module proxy
+with checksum verification enabled.
+
 ## Build and verify without publication
 
 From the repository root, with Docker Desktop (Linux containers) and PowerShell:
@@ -43,8 +72,7 @@ checks cover all four RPC shapes, invalid metadata, service isolation and strict
 dispatch. The Python server also runs its generated-server unit tests.
 
 The Go artifact uses the existing root module, preserving generated imports.
-It is an unpublished release candidate for `v0.3.0`. The existing `v0.1.0` and
-`v0.2.0` releases and tags remain unchanged. The proxy archive contains
+The published `v0.3.0` tag resolves to commit `6108813bfedb46e7cf92a1178e915e2c2eadb28b`. Earlier releases and tags remain unchanged. The proxy archive contains
 the compiler, runtime and Go test fixtures. Consumer-generated bindings belong to
 the application's own module; the matrix uses a separate `starter.local/demo`
 module and rewrites demo imports to that consumer module.
@@ -132,7 +160,7 @@ It also refuses an existing output directory: use `--out` with a fresh destinati
 for subsequent preparations. Checksums detect corrupted downloads; they are not
 cryptographic signatures or an independent proof of publisher identity.
 
-The prepared package version is **v0.3.0**; no new tag or Release has been created.
+The published package version is **v0.3.0**. Its release includes the packages, clean-source manifest and `SHA256SUMS`.
 This minor release includes inferred native bindings, typed client factories,
 combined server registration and the ASP.NET Core integration package. Upgrade
 compiler and runtime packages together when regenerating these helpers; earlier
@@ -142,7 +170,7 @@ bumping application contract locks.
 For subsequent versions, update the Python/Java/.NET package metadata, Go proxy
 builder, consumer dependency versions, build manifest version and package
 verification fixtures together. Commit the tested source and create its matching
-`v0.3.0` tag only when release work is authorized. Run this workflow on that
+`vNEXT` tag only when release work is authorized (substitute the new package version). Run this workflow on that
 exact tag with `create_draft=true`. The draft job alone receives `contents: write`;
 it checks the tag points to the workflow commit, verifies clean-source provenance
 and downloaded checksums, then creates an **unpublished draft** with the assets.

@@ -44,6 +44,8 @@ print('PASS: NuGet declares gRPC dependency')
 prefix = 'github.com/dunkymole/proto-contract@v0.3.0/'
 verify_zip(root / 'go/github.com/dunkymole/proto-contract/@v/v0.3.0.zip',
            [prefix + 'go.mod', prefix + 'runtimes/go/protocontract/interceptor.go',
+            prefix + 'internal/contract/testdata/options/policy.proto',
+            prefix + 'internal/contract/testdata/options/service.proto',
             prefix + 'runtimes/contract-vectors.json'], prefix + 'LICENSE')
 
 verify_zip(root / 'dotnet/ProtoContract.AspNetCore.0.3.0.nupkg',

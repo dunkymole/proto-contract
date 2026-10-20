@@ -300,7 +300,7 @@ Proto Contract is independent of application release versions and authentication
 
 ## Project status
 
-This is a working early prototype. The lock format is versioned but has not reached a stability guarantee. The roadmap includes published language packages and CI integrations.
+This is an early 0.x project. The lock format is versioned but has not reached a stability guarantee. Runtime packages are available through GitHub Releases, and CI checks contract locks, release history and cross-language interoperability. The roadmap includes custom-option and edition support and additional language integrations.
 
 ## Contributing and security
 
@@ -308,4 +308,4 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before openin
 
 Licensed under the [MIT License](LICENSE).
 
-Runtime package builds and a clean consumer starter are documented in [package preparation](docs/PACKAGES.md). Artifacts are currently unpublished.
+Runtime package builds and a clean consumer starter are documented in [package preparation](docs/PACKAGES.md). Installable runtime artifacts and SHA-256 checksums are available in the [v0.3.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.3.0).

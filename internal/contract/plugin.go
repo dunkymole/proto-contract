@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
@@ -49,7 +50,10 @@ func GeneratePluginResponse(req *pluginpb.CodeGeneratorRequest, language, bindin
 		return nil, fmt.Errorf("bindings file must contain at least one service binding")
 	}
 	sort.Slice(bindings, func(i, j int) bool { return bindings[i].Service < bindings[j].Service })
-	set := &descriptorpb.FileDescriptorSet{File: req.ProtoFile}
+	set, err := pluginDescriptorSet(req)
+	if err != nil {
+		return nil, err
+	}
 	files, err := protodesc.NewFiles(set)
 	if err != nil {
 		return nil, fmt.Errorf("invalid protoc descriptors: %w", err)
@@ -117,6 +121,43 @@ func GeneratePluginResponse(req *pluginpb.CodeGeneratorRequest, language, bindin
 		response.File = append(response.File, &pluginpb.CodeGeneratorResponse_File{Name: name, Content: &content})
 	}
 	return response, nil
+}
+
+// Modern protoc strips source-retention annotations from proto_file for the
+// requested files. Use its complete source descriptors for lock validation.
+func pluginDescriptorSet(req *pluginpb.CodeGeneratorRequest) (*descriptorpb.FileDescriptorSet, error) {
+	set := &descriptorpb.FileDescriptorSet{File: append([]*descriptorpb.FileDescriptorProto(nil), req.ProtoFile...)}
+	requested, positions := map[string]bool{}, map[string]int{}
+	for _, name := range req.FileToGenerate {
+		requested[name] = true
+	}
+	for i, file := range set.File {
+		positions[file.GetName()] = i
+	}
+	seen := map[string]bool{}
+	for _, source := range req.SourceFileDescriptors {
+		name := source.GetName()
+		i, exists := positions[name]
+		if !exists || !requested[name] || seen[name] {
+			return nil, fmt.Errorf("invalid or duplicate source_file_descriptors entry %q", name)
+		}
+		seen[name] = true
+		set.File[i] = source
+	}
+	if len(seen) != 0 {
+		files, err := protodesc.NewFiles(set)
+		if err != nil {
+			return nil, fmt.Errorf("invalid full source descriptors: %w", err)
+		}
+		types := dynamicpb.NewTypes(files)
+		for name := range seen {
+			i := positions[name]
+			if err := checkSourceDescriptor(set.File[i], req.ProtoFile[i], types); err != nil {
+				return nil, fmt.Errorf("inconsistent source descriptor %q: %w", name, err)
+			}
+		}
+	}
+	return set, nil
 }
 
 // ValidateSnapshotAgainst checks a lock against the exact imported descriptor

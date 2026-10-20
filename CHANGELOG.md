@@ -2,13 +2,17 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
-## 0.3.0 (unreleased)
+## Unreleased
+
+- Resolve imported custom protobuf options, retain checked definitions and values in contract locks, and require a major contract bump for annotation changes. Validate source-retained plugin options without adding edition support.
+
+## 0.3.0 (2026-10-19)
 
 - Upgrade the Go build baseline to 1.27.2, require Go 1.26.9+, update gRPC-Go and x/net to patched releases, and gate CI/release preparation on reachable vulnerability scans.
 - Contract-bound native client factories and typed server registration with global fail-closed enforcement, descriptor-based binding inference, independent overrides, naming conformance tests, and ASP.NET Core integration.
 
 - Manual release preparation workflow with downloadable package assets, SHA-256 checksums and optional unpublished GitHub draft Releases.
-- Unpublished Python, Java, .NET, and Go runtime artifacts with license metadata, checksums, package-based interoperability tests, and a clean Python starter.
+- Published Python, Java, .NET, and Go runtime artifacts on [GitHub Releases](https://github.com/dunkymole/proto-contract/releases/tag/v0.3.0), with license metadata, checksums, package-based interoperability tests, and a clean Python starter. Go is also available through the public module tag.
 - Initial contract compiler with deterministic reachable-graph locks.
 - Automatic none, minor, and major change classification and deliberate lock updates.
 - Generated client and server interceptors for Python, Go, Java, and .NET, bound to each build's lock.
