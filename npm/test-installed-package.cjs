@@ -40,7 +40,7 @@ try {
   // npm exec exercises the installed .bin shims, including cmd shims on Windows.
   npm(["exec", "--offline", "--", "proto-contract", "snapshot", ...schema, "--api", "npm_consumer", "--version", "1.0.0", "--out", "lock.json"]);
   npm(["exec", "--offline", "--", "proto-contract", "check", ...schema, "--lock", "lock.json"]);
-  npm(["exec", "--offline", "--", "proto-contract", "generate", "--lock", "lock.json", "--lang", "python", "--out", "cli.py"]);
+  npm(["exec", "--offline", "--", "proto-contract", "generate", ...schema, "--lock", "lock.json", "--lang", "python", "--out", "cli.py"]);
   fs.writeFileSync(path.join(work, "bindings.json"), JSON.stringify({ bindings: [{ service: "npm_consumer.API", lock: "lock.json", output: "plugin.py" }] }));
   // PATH discovery is essential on Windows: protoc wraps a discovered npm .cmd
   // shim with cmd.exe; an explicit --plugin=.cmd would bypass that handling.
