@@ -1,6 +1,6 @@
-# Runtime packages — v0.5.0
+# Runtime packages — v0.6.0
 
-Runtime packages are published as [v0.5.0 GitHub Release assets](https://github.com/dunkymole/proto-contract/releases/tag/v0.5.0). Python, Java and .NET packages are downloaded from that release; they are not published to PyPI, Maven Central or NuGet.org. Go uses the public repository tag. Package version `0.5.0` versions the adapter
+Runtime packages are published as [v0.6.0 GitHub Release assets](https://github.com/dunkymole/proto-contract/releases/tag/v0.6.0). Python, Java and .NET packages are downloaded from that release; they are not published to PyPI, Maven Central or NuGet.org. Go uses the public repository tag. Package version `0.6.0` versions the adapter
 implementation, independently of the API version in each generated contract lock.
 
 | Language | Coordinate | Build/test baseline | Dependency policy |
@@ -18,29 +18,37 @@ release version; any future independent releases must retain generated public
 API compatibility or document the required compiler upgrade.
 
 The Go minimum was raised for patched dependencies and standard-library fixes.
-Go 1.22–1.25 consumers must upgrade their toolchain before using v0.5.0. CI and
+Go 1.22–1.25 consumers must upgrade their toolchain before using v0.6.0. CI and
 release preparation run govulncheck v1.9.0 against the current vulnerability
 database and fail for reachable findings. A clean scan covers the analyzed Go
 source graph; it is not a security audit of every language package or deployment.
 
-## Install v0.5.0
+## Install v0.6.0
+
+Node.js projects can install the compiler and protoc plugin directly from npm:
+
+```sh
+npm install --save-dev @dunkymole/proto-contract@0.6.0
+```
+
+This build-tool package includes both commands for Linux, macOS and Windows (x64/arm64), needs Node.js 22+, and requires no Go installation or install-time downloads. `protoc` remains a separate prerequisite. It does not contain the TypeScript runtime; generated strict clients use grpc-bridge as described in [runtime integration](RUNTIMES.md#typescript--grpc-bridge-client). The native adapters below retain their existing distribution channels.
 
 This release adds the [core Edition 2023 compiler features](COMPATIBILITY.md#protobuf-edition-2023). Use an edition-capable protoc (CI tests protoc 33) and edition-capable native protobuf generators/runtimes when compiling edition schemas. The native interoperability examples still use proto3; TypeScript also has a genuine Edition 2023 runtime-graph test.
 
 Download all attached assets, including the packages, `manifest.json`,
 `candidate.json`, `RELEASE_NOTES.md` and `SHA256SUMS`, from the
-[v0.5.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.5.0).
+[v0.6.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.6.0).
 From the download directory, verify `sha256sum --check SHA256SUMS`, then install
 the packages you need:
 
 ```sh
-python -m pip install ./proto_contract_runtime-0.5.0-py3-none-any.whl
-mvn install:install-file -Dfile=proto-contract-runtime-0.5.0.jar -DpomFile=proto-contract-runtime-0.5.0.pom
+python -m pip install ./proto_contract_runtime-0.6.0-py3-none-any.whl
+mvn install:install-file -Dfile=proto-contract-runtime-0.6.0.jar -DpomFile=proto-contract-runtime-0.6.0.pom
 dotnet nuget add source /absolute/path/to/downloads --name proto-contract-release
-dotnet add package ProtoContract.Runtime --version 0.5.0
+dotnet add package ProtoContract.Runtime --version 0.6.0
 # ASP.NET Core servers also install:
-dotnet add package ProtoContract.AspNetCore --version 0.5.0
-go get github.com/dunkymole/proto-contract@v0.5.0
+dotnet add package ProtoContract.AspNetCore --version 0.6.0
+go get github.com/dunkymole/proto-contract@v0.6.0
 ```
 
 Keep NuGet.org enabled for transitive dependencies. Maven installs the downloaded
@@ -90,11 +98,11 @@ To install the local artifacts in your own project:
 
 ```sh
 python -m pip install artifacts/packages/python/*.whl
-mvn install:install-file -Dfile=artifacts/packages/java/proto-contract-runtime-0.5.0.jar -DpomFile=artifacts/packages/java/pom.xml
+mvn install:install-file -Dfile=artifacts/packages/java/proto-contract-runtime-0.6.0.jar -DpomFile=artifacts/packages/java/pom.xml
 dotnet nuget add source /absolute/path/to/artifacts/packages/dotnet --name proto-contract-local
-dotnet add package ProtoContract.Runtime --version 0.5.0
+dotnet add package ProtoContract.Runtime --version 0.6.0
 # ASP.NET Core servers also install:
-dotnet add package ProtoContract.AspNetCore --version 0.5.0
+dotnet add package ProtoContract.AspNetCore --version 0.6.0
 ```
 
 Keep NuGet.org enabled for the transitive gRPC dependency. The container examples
@@ -102,7 +110,7 @@ use `packaging/NuGet.Config` to map the runtime specifically to the local feed.
 
 For Go, use a fresh `GOMODCACHE`, set `GOPROXY=file:///absolute/path/to/artifacts/packages/go,https://proxy.golang.org`
 and `GONOSUMDB=github.com/dunkymole/proto-contract` in an isolated test environment,
-then `go get github.com/dunkymole/proto-contract@v0.5.0`. This bypass is only for
+then `go get github.com/dunkymole/proto-contract@v0.6.0`. This bypass is only for
 the unpublished local artifact; normal published consumption must use checksums.
 
 Generate each service binding from its build's checked lock, then follow

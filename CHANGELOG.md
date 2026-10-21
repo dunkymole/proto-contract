@@ -2,6 +2,12 @@
 
 All notable changes will be documented here. The project follows Semantic Versioning for releases; protobuf contract versions remain independent.
 
+## 0.6.0 (2026-10-21)
+
+- Add the npm-installable compiler and protoc plugin with bundled cross-platform binaries and verified installed-package consumers.
+- Publish build tooling as `@dunkymole/proto-contract` for Node.js 22+; bundle Linux/macOS/Windows x64 and arm64 binaries without installation scripts, download hooks, or a consumer Go dependency. TypeScript runtime integration remains in grpc-bridge.
+- Include the npm tarball in checked release candidates and test compiler and real protoc-plugin invocation from clean npm installs. Document portable plugin discovery and registry verification.
+
 ## 0.5.0 (2026-10-20)
 
 - Support Edition 2023's six core protobuf features with pinned defaults, lexical inheritance, canonical contract fingerprints, and matching CLI/protoc-plugin generation. Equivalent resolved settings retain the same digest; feature changes require a major API contract bump.

@@ -2,7 +2,7 @@
 
 Use `scripts/release.py` for compiler/runtime package releases. This process is
 separate from application API contract versions and `contracts/releases.json`.
-Distribution is GitHub Releases plus the public Go tag. There are no uploads to
+Distribution is GitHub Releases, the public Go tag, and the compiler/plugin package on npm. There are no uploads to
 PyPI, Maven Central or NuGet.org.
 
 ## Prerequisites
@@ -141,6 +141,17 @@ retry the identical command. If a conflicting draft belongs to another candidate
 resolve ownership explicitly instead of changing its marker to bypass checks.
 
 ## 4. Verify and retain evidence
+
+### npm compiler/plugin publication
+
+Starting with the npm distribution, candidate bundles also include `dunkymole-proto-contract-VERSION.tgz`. Publish that exact tested tarball, rather than packing or rebuilding from a checkout. npm publication needs separate explicit authorization and a current npm login (and any registry-required second factor).
+
+```sh
+npm publish /absolute/path/to/dunkymole-proto-contract-VERSION.tgz --access public --tag latest
+npm view @dunkymole/proto-contract@VERSION name version bin engines dist.integrity --json
+```
+
+Then fetch the registry package with `npm pack @dunkymole/proto-contract@VERSION --ignore-scripts` into a fresh directory and compare its SHA-512 integrity and bytes with the approved candidate. Install the public version in a clean project with `--ignore-scripts`, run both compiler and real protoc-plugin consumer checks, and verify the `latest` dist-tag. Never put authentication tokens or one-time codes into tracked files or release reports. GitHub/Go publication and npm publication are separate operations: a failure after either succeeds must be reported and resumed without replacing a published version.
 
 Successful publication freshly downloads the public files, checks exact candidate
 bytes, both checksum inventories, public/stable/latest state and the tag target.

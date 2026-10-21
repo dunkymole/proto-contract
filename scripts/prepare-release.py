@@ -1,6 +1,7 @@
 """Prepare GitHub Release assets from verified local packages; no network writes."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import pathlib
 import re
@@ -37,8 +38,15 @@ def prepare(packages, destination, metadata=None, notes=None):
           for suffix in ('zip', 'mod', 'info')],
         'go/github.com/dunkymole/proto-contract/@v/list',
     ]
+    if tuple(map(int, version.split('.'))) >= (0, 6, 0):
+        required.append(f'npm/dunkymole-proto-contract-{version}.tgz')
     if set(required) != actual:
         raise ValueError('unexpected package files or inconsistent package versions')
+    if tuple(map(int, version.split('.'))) >= (0, 6, 0):
+        spec = importlib.util.spec_from_file_location('npm_package', pathlib.Path(__file__).resolve().parents[1] / 'packaging/npm_package.py')
+        npm_package = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(npm_package)
+        npm_package.verify_npm_package(packages / f'npm/dunkymole-proto-contract-{version}.tgz', version, manifest['sourceRevision'])
     # Refuse reuse rather than mixing old release files with a new build.
     if destination.exists():
         raise ValueError('release destination already exists; choose a fresh directory')

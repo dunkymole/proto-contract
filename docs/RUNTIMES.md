@@ -97,7 +97,7 @@ The tested examples use these dependencies; see the linked build files for exact
 | .NET | .NET 9, `Grpc.Net.Client`/`Grpc.AspNetCore`, `Grpc.Tools`; [client project](../examples/clients/dotnet/ProtoContractClientDemo.csproj), [server project](../examples/servers/dotnet/ProtoContractServerDemo.csproj) |
 | TypeScript | Node.js 24 for the executable example, Connect 2.x, Protobuf-ES 2.15.0, and pinned grpc-bridge source; [package manifest](../examples/clients/grpc-bridge/package.json), [Docker build](../examples/clients/grpc-bridge/Dockerfile) |
 
-These are demonstrated configurations, not a compatibility promise for every language/runtime release. Native runtime packages are built locally and installed from artifacts by the examples. v0.5.0 packages are available from [GitHub Releases](https://github.com/dunkymole/proto-contract/releases/tag/v0.5.0); see [installation and package preparation](PACKAGES.md). grpc-bridge's example package is built locally in Docker from its pinned source revision.
+These are demonstrated configurations, not a compatibility promise for every language/runtime release. Native runtime packages are built locally and installed from artifacts by the examples. v0.6.0 packages are available from [GitHub Releases](https://github.com/dunkymole/proto-contract/releases/tag/v0.6.0); see [installation and package preparation](PACKAGES.md). grpc-bridge's example package is built locally in Docker from its pinned source revision.
 
 ## RPC coverage
 
@@ -118,7 +118,7 @@ The metadata parser is deliberately bounded and portable; malformed or duplicate
 Run `./scripts/test-all.ps1` from the repository root in PowerShell for compiler lock checks, builds, all 20 combinations, and cleanup. Docker must run Linux containers. To run the clients manually in any shell:
 
 ```sh
-docker build -f packaging/Dockerfile --target artifacts --output type=local,dest=artifacts .
+pwsh ./scripts/build-packages.ps1
 docker compose build
 docker compose up -d go-server java-server dotnet-server python-server grpc-bridge
 docker compose run --rm -T python-client
@@ -132,6 +132,8 @@ docker compose down --remove-orphans
 Stop and inspect a failing build/client command; run cleanup even after a failure. For server diagnostics use `docker compose logs go-server java-server dotnet-server python-server grpc-bridge`. Services are reachable through Compose DNS, not published host ports. Each native client checks the generated compatible contract and deliberately incompatible fixtures against all four servers; grpc-bridge adds older-minor, patch, wrong-API, missing-contract, and concurrent-client checks.
 
 ## TypeScript / grpc-bridge client
+
+Install the compiler and plugin with `npm install --save-dev @dunkymole/proto-contract@0.6.0`. Within an npm script, the commands are on `PATH`; let protoc discover `protoc-gen-proto-contract` there. Outside npm scripts, use `npx proto-contract` for compiler commands. `protoc` and the Protobuf-ES generator are separate tools. The npm package supplies build tooling only; the runtime still comes from grpc-bridge. Use the reviewed source package described below until that separate runtime is published to npm.
 
 Proto Contract generates contract-bound clients for [grpc-bridge](https://github.com/dunkymole/grpc-bridge). The protoc plugin checks each lock against the exact descriptor request used to generate Protobuf-ES bindings, then imports and binds that service descriptor in the generated artifact. The runtime graph projection is tested against Protobuf-ES 2.15.0; use Connect 2.x, the strict grpc-bridge package entry, that Protobuf-ES version, and a supported browser or Node.js 24+.
 

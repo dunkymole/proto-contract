@@ -9,6 +9,7 @@ import tempfile
 import unittest
 import zipfile
 from unittest.mock import patch
+from npm_fixtures import write_npm_fixture
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -25,16 +26,19 @@ helper = load('prepare_helper', ROOT / 'scripts/prepare-release.py')
 VERSION, COMMIT, RUN, ARTIFACT = '0.5.0', 'a' * 40, 123, 456
 
 
-def candidate(root, run_id=RUN):
+def candidate(root, run_id=RUN, v=VERSION):
     packages = root / 'packages'
-    manifest = {'adapterVersion': VERSION, 'sourceRevision': COMMIT, 'sourceHasChanges': False, 'artifacts': []}
-    for name in sorted(tool.package_paths(VERSION)):
+    manifest = {'adapterVersion': v, 'sourceRevision': COMMIT, 'sourceHasChanges': False, 'artifacts': []}
+    for name in sorted(tool.package_paths(v)):
         path = packages / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(name.encode())
+        if name.startswith('npm/'):
+            write_npm_fixture(path, v, COMMIT)
+        else:
+            path.write_bytes(name.encode())
         manifest['artifacts'].append({'path': name, 'sha256': tool.sha(path.read_bytes())})
     (packages / 'manifest.json').write_text(json.dumps(manifest))
-    metadata = {'format': 1, 'repository': tool.REPO, 'version': VERSION, 'sourceRevision': COMMIT,
+    metadata = {'format': 1, 'repository': tool.REPO, 'version': v, 'sourceRevision': COMMIT,
                 'sourceTree': 'c' * 40, 'grpcBridgeRevision': tool.BRIDGE, 'toolchains': {'go': 'go1.27.2'},
                 'sourceHasChanges': False, 'workflowRunId': run_id, 'workflowAttempt': 1 if run_id else None,
                 'workflowPath': tool.WORKFLOW}
@@ -57,6 +61,7 @@ class FakeGitHub:
         self.fail_upload = None
         self.next_id = 1000
         self.go_failures = 0
+        self.hide_draft_by_tag = False
 
     def api(self, path, method='GET', fields=None, optional=False, binary=False):
         if method != 'GET':
@@ -69,6 +74,12 @@ class FakeGitHub:
             self.tag = COMMIT
             return {}
         if path == f'releases/tags/v{VERSION}':
+            if self.release and self.release['draft'] and self.hide_draft_by_tag:
+                return None
+            return self.release
+        if path.startswith('releases?per_page=100&page='):
+            return [self.release] if self.release else []
+        if path == 'releases/2000':
             return self.release
         if path == 'releases/latest':
             return {'tag_name': f'v{VERSION}' if self.release and not self.release['draft'] else 'v0.4.0'}
@@ -87,6 +98,7 @@ class FakeGitHub:
         if operation == 'create':
             notes = pathlib.Path(args[args.index('--notes-file') + 1]).read_text(encoding='utf-8')
             self.release = {'draft': True, 'prerelease': False, 'body': notes, 'assets': [],
+                            'id': 2000, 'tag_name': f'v{VERSION}',
                             'html_url': f'https://github.com/{tool.REPO}/releases/tag/v{VERSION}'}
         elif operation == 'upload':
             path = pathlib.Path(args[4])
@@ -116,6 +128,28 @@ class CandidateTests(unittest.TestCase):
         report = tool.verify_assets(self.out, VERSION, COMMIT, RUN)
         self.assertEqual(report['packageChecksums'], 12)
         self.assertEqual(report['assetChecksums'], 12)
+
+    def test_npm_candidate_and_recomputed_outer_checksums(self):
+        v = '0.6.0'
+        out = candidate(self.root / 'npm', v=v)
+        report = tool.verify_assets(out, v, COMMIT, RUN)
+        self.assertEqual(report['packageChecksums'], 13)
+        self.assertEqual(report['assetChecksums'], 13)
+        def mutate(contents):
+            package = json.loads(contents['package.json'])
+            package['name'] = '@other/compiler'
+            contents['package.json'] = json.dumps(package).encode()
+        path = out / f'dunkymole-proto-contract-{v}.tgz'
+        write_npm_fixture(path, v, COMMIT, mutate)
+        manifest_path = out / 'manifest.json'
+        manifest = json.loads(manifest_path.read_text())
+        for entry in manifest['artifacts']:
+            if entry['path'].startswith('npm/'):
+                entry['sha256'] = tool.sha(path.read_bytes())
+        manifest_path.write_text(json.dumps(manifest))
+        rehash(out)
+        with self.assertRaisesRegex(ValueError, 'npm package identity'):
+            tool.verify_assets(out, v, COMMIT, RUN)
 
     def test_wrong_version_commit_run_are_rejected(self):
         for args in [('0.6.0', COMMIT, RUN), (VERSION, 'f' * 40, RUN), (VERSION, COMMIT, 999)]:
@@ -255,6 +289,17 @@ class PublisherTests(unittest.TestCase):
             if command[:3] == ('gh', 'release', 'upload'):
                 self.assertNotIn(pathlib.Path(command[4]).name, uploaded)
 
+    def test_draft_hidden_by_tag_is_found_and_resumed_by_id(self):
+        self.github.hide_draft_by_tag = True
+        self.github.fail_upload = 'manifest.json'
+        with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+            self.publish()
+        self.assertTrue(self.github.release['draft'])
+        self.publish()
+        creates = [entry for entry in self.github.writes if entry[:3] == ('gh', 'release', 'create')]
+        self.assertEqual(len(creates), 1)
+        self.assertFalse(self.github.release['draft'])
+
     def test_conflicting_tag_fails_before_any_write(self):
         self.github.tag = 'f' * 40
         with self.assertRaisesRegex(ValueError, 'another commit'):
@@ -291,6 +336,22 @@ class PublisherTests(unittest.TestCase):
         destination.mkdir()
         with self.assertRaises(ValueError):
             tool.verify_published(VERSION, COMMIT, destination, RUN, go=False)
+
+
+class ReleaseLookupTests(unittest.TestCase):
+    def test_hidden_draft_lookup_paginates_and_reads_detail(self):
+        draft = {'id': 42, 'tag_name': 'v0.6.0', 'draft': True}
+        pages = {f'releases/tags/v0.6.0': None,
+                 'releases?per_page=100&page=1': [{'tag_name': f'v0.0.{i}', 'id': i} for i in range(100)],
+                 'releases?per_page=100&page=2': [draft], 'releases/42': draft}
+        with patch.object(tool, 'api', side_effect=lambda path, **kwargs: pages[path]) as mocked:
+            self.assertEqual(tool.find_release('0.6.0'), draft)
+            self.assertEqual(mocked.call_args.args, ('releases/42',))
+
+    def test_duplicate_exact_tags_fail_closed(self):
+        with patch.object(tool, 'api', side_effect=[None, [{'tag_name': 'v0.6.0', 'id': 1}, {'tag_name': 'v0.6.0', 'id': 2}]]):
+            with self.assertRaisesRegex(ValueError, 'multiple releases'):
+                tool.find_release('0.6.0')
 
 
 class VersionTests(unittest.TestCase):

@@ -8,6 +8,8 @@ Protobuf's wire format supports evolution. Proto Contract answers the deployment
 
 ## Automatic semantic versioning
 
+For Node.js/TypeScript builds, install the compiler and protoc plugin with `npm install --save-dev @dunkymole/proto-contract@0.6.0` (Node.js 22+, Linux/macOS/Windows x64 or arm64). Use `npx proto-contract` or npm scripts; install `protoc` separately. See [compiler setup](docs/COMPILER.md#npm-installation) and [TypeScript runtime integration](docs/RUNTIMES.md#typescript--grpc-bridge-client).
+
 The compiler compares a service and its reachable protobuf types with the tracked lock and calculates the minimum semantic version bump:
 
 - **Additive schema change → minor bump**, such as adding a method or field.
@@ -308,5 +310,5 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before openin
 
 Licensed under the [MIT License](LICENSE).
 
-Runtime package builds and a clean consumer starter are documented in [package preparation](docs/PACKAGES.md). Installable runtime artifacts and SHA-256 checksums are available in the [v0.5.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.5.0).
+Runtime package builds and a clean consumer starter are documented in [package preparation](docs/PACKAGES.md). Installable runtime artifacts and SHA-256 checksums are available in the [v0.6.0 release](https://github.com/dunkymole/proto-contract/releases/tag/v0.6.0).
 See the [release runbook](docs/RELEASING.md) for repeatable version updates, candidate preparation and publication.

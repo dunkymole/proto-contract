@@ -1,0 +1,20 @@
+{
+  "name": "@dunkymole/proto-contract",
+  "version": "0.6.0",
+  "description": "Proto Contract compiler and protoc plugin, with bundled native executables",
+  "license": "MIT",
+  "author": "Duncan Mole",
+  "homepage": "https://github.com/dunkymole/proto-contract#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dunkymole/proto-contract.git"
+  },
+  "bugs": "https://github.com/dunkymole/proto-contract/issues",
+  "engines": { "node": ">=22" },
+  "bin": {
+    "proto-contract": "bin/proto-contract.cjs",
+    "protoc-gen-proto-contract": "bin/protoc-gen-proto-contract.cjs"
+  },
+  "files": ["bin/", "native/", "native-manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "README.md"],
+  "publishConfig": { "access": "public" }
+}

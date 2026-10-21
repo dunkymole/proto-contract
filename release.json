@@ -1,10 +1,10 @@
 {
-  "version": "0.5.0",
+  "version": "0.6.0",
   "targets": {
-    "README.md": 2,
-    "docs/COMPILER.md": 1,
-    "docs/RUNTIMES.md": 2,
-    "docs/PACKAGES.md": 18,
+    "README.md": 3,
+    "docs/COMPILER.md": 2,
+    "docs/RUNTIMES.md": 3,
+    "docs/PACKAGES.md": 19,
     "runtimes/dotnet/ProtoContract.Runtime.csproj": 1,
     "runtimes/dotnet/README.md": 1,
     "runtimes/dotnet-aspnetcore/ProtoContract.AspNetCore.csproj": 1,
@@ -20,6 +20,8 @@
     "examples/servers/dotnet/ProtoContractServerDemo.csproj": 2,
     "examples/servers/go/Dockerfile": 1,
     "examples/servers/java/Dockerfile": 2,
-    "examples/servers/java/pom.xml": 2
+    "examples/servers/java/pom.xml": 2,
+    "npm/package.json": 1,
+    "npm/README.md": 1
   }
 }

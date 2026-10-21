@@ -4,6 +4,29 @@ Run commands from the repository root unless a command uses paths from your own 
 
 ## Run the compiler
 
+### npm installation
+
+For Node.js and TypeScript projects, install the compiler and protoc plugin as a development dependency:
+
+```sh
+npm install --save-dev @dunkymole/proto-contract@0.6.0
+npx proto-contract check --proto proto/demo/v1/echo.proto --proto-path proto --service demo.v1.EchoService --lock contracts/demo.echo.json
+```
+
+The package bundles native binaries for Linux, macOS and Windows on x64 and arm64. It requires Node.js 22+ and does not require Go or run installation scripts. It installs `proto-contract` and `protoc-gen-proto-contract` in `node_modules/.bin`; npm scripts put that directory on `PATH`. Install `protoc` separately for descriptor compilation and protobuf generation. This is build tooling: it does not add a TypeScript runtime to your application or replace Protobuf-ES, Connect or grpc-bridge.
+
+For portable plugin discovery, run protoc from an npm script and omit an explicit `--plugin` path for the contract plugin. With your service lock and bindings file prepared, a `package.json` script can use:
+
+```json
+{
+  "scripts": {
+    "contracts:generate": "protoc -I proto --proto-contract_out=. --proto-contract_opt=lang=typescript,bindings=contracts/typescript-bindings.json orders/v1/orders.proto"
+  }
+}
+```
+
+Run `npm run contracts:generate`. Add the separately installed Protobuf-ES generator's output flags to the same protoc command to generate message/service bindings in that invocation. On Windows, rely on plugin discovery through the npm script's `PATH`; do not pass a `.cmd` shim as an explicit native `--plugin` executable path.
+
 ### Local installation
 
 Use Go 1.27.2 or newer to build the CLI from this checkout:
@@ -147,7 +170,7 @@ Use numeric `MAJOR.MINOR.PATCH` versions (no prerelease/build suffixes or leadin
 | `proto-contract` not found | Install the CLI or define the Docker wrapper above. |
 | `protoc` not found / imports unresolved | Set `--protoc` or use Docker; check `--proto-path`. |
 | `check` reports a required bump | Review the schema change, then deliberately run `update` and commit the lock. |
-| Generated code cannot import the runtime | Install the language's v0.5.0 release package or a matching local build; see [runtime packages](PACKAGES.md). |
+| Generated code cannot import the runtime | Install the language's v0.6.0 release package or a matching local build; see [runtime packages](PACKAGES.md). |
 | A call returns `FAILED_PRECONDITION` | Check the API identity, the client's generated version, the server's generated version, and interceptor registration. Rebuild from the intended lock rather than overriding the header. |
 
 The classifier's exact scope and limitations are in [compatibility policy](COMPATIBILITY.md).

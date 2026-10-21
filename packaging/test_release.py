@@ -5,6 +5,7 @@ import pathlib
 import tempfile
 import unittest
 import zipfile
+from npm_fixtures import write_npm_fixture
 
 spec = importlib.util.spec_from_file_location('release', pathlib.Path(__file__).parents[1] / 'scripts/prepare-release.py')
 release = importlib.util.module_from_spec(spec)
@@ -25,13 +26,17 @@ class ReleaseTests(unittest.TestCase):
             *[f'java/proto-contract-runtime-7.8.9{suffix}.jar' for suffix in ('', '-sources', '-javadoc')],
             *[f'go/github.com/dunkymole/proto-contract/@v/v7.8.9.{suffix}' for suffix in ('zip', 'mod', 'info')],
             'go/github.com/dunkymole/proto-contract/@v/list',
+            'npm/dunkymole-proto-contract-7.8.9.tgz',
         ]
         self.manifest = {'adapterVersion': '7.8.9', 'sourceRevision': 'a' * 40,
                          'sourceHasChanges': False, 'artifacts': []}
         for name in names:
             path = self.packages / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(name.encode())
+            if name.startswith('npm/'):
+                write_npm_fixture(path, '7.8.9', 'a' * 40)
+            else:
+                path.write_bytes(name.encode())
             self.manifest['artifacts'].append({'path': name, 'sha256': release.digest(path)})
         self.write_manifest()
 
@@ -43,7 +48,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(release.prepare(self.packages, first), '7.8.9')
         release.prepare(self.packages, second)
         checksums = (first / 'SHA256SUMS').read_text().splitlines()
-        self.assertEqual(len(checksums), 10)
+        self.assertEqual(len(checksums), 11)
         for line in checksums:
             checksum, name = line.split('  ')
             self.assertEqual(hashlib.sha256((first / name).read_bytes()).hexdigest(), checksum)
