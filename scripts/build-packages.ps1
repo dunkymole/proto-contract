@@ -11,7 +11,8 @@ try {
             throw 'Package output must remain inside the workspace artifacts directory'
         }
     }
-    docker build --file packaging/Dockerfile --target artifacts --output "type=local,dest=$exportRoot" .
+    $sourceRevision = git rev-parse HEAD
+    docker build --file packaging/Dockerfile --target artifacts --build-arg "SOURCE_REVISION=$sourceRevision" --output "type=local,dest=$exportRoot" .
     if ($LASTEXITCODE -ne 0) { throw 'Package build failed' }
     # Retain old artifacts separately; never mix versions in the current inventory.
     if (Test-Path -LiteralPath $packageRoot) { Move-Item -LiteralPath $packageRoot -Destination $previousRoot }

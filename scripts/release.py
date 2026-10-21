@@ -21,6 +21,10 @@ REPO = 'dunkymole/proto-contract'
 WORKFLOW = '.github/workflows/package-release.yml'
 BRIDGE = '87f0e1c86dcd53b64cd24948962ced5b3fc38f99'
 
+_npm_spec = importlib.util.spec_from_file_location('npm_package', ROOT / 'packaging/npm_package.py')
+_npm_package = importlib.util.module_from_spec(_npm_spec)
+_npm_spec.loader.exec_module(_npm_package)
+
 
 def require(condition, message):
     if not condition:
@@ -78,6 +82,10 @@ def check_versions():
     for name in data['targets']:
         if name == 'runtimes/python/pyproject.toml':
             actual = tomllib.loads((ROOT / name).read_text())['project']['version']
+        elif name == 'npm/package.json':
+            package = json.loads((ROOT / name).read_text())
+            require(package['name'] == '@dunkymole/proto-contract', 'unexpected npm package identity')
+            actual = package['version']
         elif name.endswith('/pom.xml'):
             actual = ET.parse(ROOT / name).getroot().find('{*}version').text
         elif name.startswith('runtimes/') and name.endswith('.csproj'):
@@ -109,7 +117,29 @@ def tag_target(tag):
 
 def absent_release(v):
     require(tag_target(f'v{v}') is None, f'v{v} tag already exists')
-    require(api(f'releases/tags/v{v}', optional=True) is None, f'v{v} release already exists')
+    require(find_release(v) is None, f'v{v} release already exists')
+
+
+def find_release(v):
+    """GitHub may hide a draft from the by-tag endpoint even for its author."""
+    tag = f'v{v}'
+    release = api(f'releases/tags/{tag}', optional=True)
+    if release is not None:
+        return release
+    matches = []
+    page = 1
+    while True:
+        releases = api(f'releases?per_page=100&page={page}')
+        matches.extend(item for item in releases if item['tag_name'] == tag)
+        if len(releases) < 100:
+            break
+        page += 1
+    require(len(matches) <= 1, 'multiple releases claim the selected tag')
+    if not matches:
+        return None
+    release = api(f'releases/{matches[0]["id"]}')
+    require(release['tag_name'] == tag, 'release tag changed during lookup')
+    return release
 
 
 def bump(v, commit, summary, date, dry_run=False):
@@ -152,7 +182,7 @@ def package_paths(v):
         'java/pom.xml', *[f'java/proto-contract-runtime-{v}{suffix}.jar' for suffix in ('', '-sources', '-javadoc')],
         *[f'go/github.com/dunkymole/proto-contract/@v/v{v}.{suffix}' for suffix in ('zip', 'mod', 'info')],
         'go/github.com/dunkymole/proto-contract/@v/list',
-    }
+    } | ({f'npm/dunkymole-proto-contract-{v}.tgz'} if tuple(map(int, v.split('.'))) >= (0, 6, 0) else set())
 
 
 def asset_names(v):
@@ -195,6 +225,8 @@ def verify_assets(root, v, commit, run_id=None, candidate=True):
                     name = f'proto-contract-runtime-{v}.pom'
                 data = (root / name).read_bytes()
             require(sha(data) == item['sha256'], f'package checksum mismatch: {item["path"]}')
+    if tuple(map(int, v.split('.'))) >= (0, 6, 0):
+        _npm_package.verify_npm_package(root / f'dunkymole-proto-contract-{v}.tgz', v, commit)
     if candidate:
         metadata = json.loads((root / 'candidate.json').read_text())
         require(metadata['format'] == 1 and metadata['repository'] == REPO, 'unknown candidate format/repository')
@@ -213,6 +245,8 @@ def release_notes(v, commit):
     text = (ROOT / 'CHANGELOG.md').read_text(encoding='utf-8')
     section = re.search(rf'^## {re.escape(v)}(?: .*?)?\n(.*?)(?=^## |\Z)', text, re.M | re.S)
     require(section and section[1].strip(), 'add release notes to CHANGELOG.md before preparation')
+    npm_install = f'npm install --save-dev @dunkymole/proto-contract@{v}\n' if tuple(map(int, v.split('.'))) >= (0, 6, 0) else ''
+    npm_scope = '\nThe npm package supplies compiler/build tooling, including the protoc plugin; it is not a TypeScript RPC runtime.\n' if npm_install else ''
     return f'''# Proto Contract v{v}
 
 {section[1].strip()}
@@ -225,6 +259,7 @@ See [installation](https://github.com/{REPO}/blob/v{v}/docs/PACKAGES.md) and
 [compatibility limits](https://github.com/{REPO}/blob/v{v}/docs/COMPATIBILITY.md).
 
 ```sh
+{npm_install}\
 python -m pip install ./proto_contract_runtime-{v}-py3-none-any.whl
 mvn install:install-file -Dfile=proto-contract-runtime-{v}.jar -DpomFile=proto-contract-runtime-{v}.pom
 dotnet nuget add source /absolute/path/to/downloads --name proto-contract-release
@@ -234,6 +269,7 @@ go get github.com/dunkymole/proto-contract@v{v}
 go install github.com/dunkymole/proto-contract/cmd/proto-contract@v{v}
 go install github.com/dunkymole/proto-contract/cmd/protoc-gen-proto-contract@v{v}
 ```
+{npm_scope}
 
 Keep NuGet.org enabled for transitive dependencies. GitHub hosts these assets;
 there are no uploads to PyPI, Maven Central or NuGet.org. Go uses the public tag
@@ -261,6 +297,7 @@ def bundle(commit, out, packages, run_id=None, attempt=None):
                 'grpcBridgeRevision': bridge,
                 'toolchains': {'go': run('go', 'version'), 'protoc': run('protoc', '--version'),
                                'python': sys.version,
+                               'npmBuilder': 'Node.js 24 / npm from node:24-bookworm-slim; native toolchain golang:1.27.2-bookworm',
                                'containerBases': [line for line in (ROOT / 'packaging/Dockerfile').read_text().splitlines() if line.startswith('FROM ')],
                                'buildDefinitions': ['Dockerfile', 'packaging/Dockerfile', WORKFLOW]}}
     helper.prepare(packages, out, metadata, release_notes(v, commit))
@@ -315,7 +352,7 @@ def download_artifact(run_id, artifact_id, v, commit, destination):
 def release_state(v, commit, marker, notes, files):
     target = tag_target(f'v{v}')
     require(target is None or target == commit, 'existing tag references another commit; never move it')
-    release = api(f'releases/tags/v{v}', optional=True)
+    release = find_release(v)
     if release is not None:
         require(target == commit and release['body'] == marker + notes and not release['prerelease'], 'existing release belongs to a different candidate')
         assets = release['assets']
@@ -337,7 +374,8 @@ def verify_published(v, commit, destination, run_id=None, candidate=True, expect
     version(v)
     require(re.fullmatch('[0-9a-f]{40}', commit), 'expected full commit SHA')
     require(tag_target(f'v{v}') == commit, 'published tag source mismatch')
-    release = api(f'releases/tags/v{v}')
+    release = find_release(v)
+    require(release is not None, 'published release not found')
     require(not release['draft'] and not release['prerelease'], 'release is not public/stable')
     require(api('releases/latest')['tag_name'] == f'v{v}', 'release is not latest; do not move latest backwards')
     names = [a['name'] for a in release['assets']]

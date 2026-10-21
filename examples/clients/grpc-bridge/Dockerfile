@@ -26,15 +26,6 @@ WORKDIR /bridge/web
 COPY --from=source /bridge/web ./
 RUN npm ci --no-audit --no-fund && npm pack --pack-destination /tmp
 
-FROM golang:1.27.2-alpine AS contract-build
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
-COPY cmd ./cmd
-COPY internal ./internal
-RUN CGO_ENABLED=0 go build -o /proto-contract ./cmd/proto-contract && \
-    CGO_ENABLED=0 go build -o /protoc-gen-proto-contract ./cmd/protoc-gen-proto-contract
-
 FROM node:24-alpine AS client
 RUN apk add --no-cache bash protobuf jq
 WORKDIR /app
@@ -60,12 +51,13 @@ COPY examples/rollout /app/rollout
 COPY scripts/check-rollout-versions.sh /app/rollout/check-rollout-versions.sh
 COPY scripts/ci-contract-check.sh /app/scripts/ci-contract-check.sh
 COPY scripts/test-ci-contract-check.sh /app/scripts/test-ci-contract-check.sh
-COPY --from=contract-build /proto-contract /usr/local/bin/proto-contract
-COPY --from=contract-build /protoc-gen-proto-contract /usr/local/bin/protoc-gen-proto-contract
+COPY artifacts/packages/npm/*.tgz /compiler-artifacts/
+RUN npm install --prefix /compiler --ignore-scripts --no-audit --no-fund --package-lock=false /compiler-artifacts/*.tgz
+ENV PATH="/compiler/node_modules/.bin:${PATH}"
 RUN mkdir -p gen contracts && protoc -I /proto \
     --plugin=protoc-gen-es=./node_modules/.bin/protoc-gen-es \
     --es_out=gen --es_opt=target=ts,import_extension=js \
-    --plugin=protoc-gen-proto-contract=/usr/local/bin/protoc-gen-proto-contract \
+    --plugin=protoc-gen-proto-contract=/compiler/node_modules/.bin/protoc-gen-proto-contract \
     --proto-contract_out=. \
     --proto-contract_opt=lang=typescript,bindings=contracts/typescript-bindings.json \
     demo/v1/echo.proto && \

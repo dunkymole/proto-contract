@@ -86,6 +86,35 @@ jobs:
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           VERSION: ${{ steps.bundle.outputs.version }}
         run: |
-          echo 'Prepared only: no tag or Release was created.' >> "$GITHUB_STEP_SUMMARY"
-          echo "Candidate run: $GITHUB_RUN_ID; artifact: $ARTIFACT_ID; source: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
-          echo "Dry-run promotion: python scripts/release.py publish --version $VERSION --commit $GITHUB_SHA --run-id $GITHUB_RUN_ID --artifact-id $ARTIFACT_ID --dry-run" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo 'Prepared only: no tag or Release was created.'
+            echo "Candidate run: $GITHUB_RUN_ID; artifact: $ARTIFACT_ID; source: $GITHUB_SHA"
+            echo "Dry-run promotion: python scripts/release.py publish --version $VERSION --commit $GITHUB_SHA --run-id $GITHUB_RUN_ID --artifact-id $ARTIFACT_ID --dry-run"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  npm-native-smoke:
+    name: Candidate npm native smoke (${{ matrix.os }})
+    needs: prepare
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: proto-contract-release-${{ needs.prepare.outputs.version }}
+          path: artifacts/npm-candidate
+      - name: Exercise candidate compiler and plugin protocol on native host
+        shell: pwsh
+        run: |
+          $package = @(Get-ChildItem -LiteralPath artifacts/npm-candidate -Filter '*.tgz')
+          if ($package.Count -ne 1) { throw 'Expected exactly one candidate npm tarball' }
+          node npm/test-native-smoke.cjs $package[0].FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Native npm candidate smoke failed' }

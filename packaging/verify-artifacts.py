@@ -4,10 +4,16 @@ import json
 import tarfile
 import zipfile
 import xml.etree.ElementTree as ET
+from npm_package import verify_npm_package
 
 root = pathlib.Path('/artifacts/packages')
 version = json.loads((root / 'manifest.json').read_text(encoding='utf-8-sig'))['adapterVersion']
 license_text = pathlib.Path('/license').read_text(encoding='utf-8-sig').strip()
+manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8-sig'))
+verify_npm_package(root / f'npm/dunkymole-proto-contract-{version}.tgz', version, manifest['sourceRevision'])
+with tarfile.open(root / f'npm/dunkymole-proto-contract-{version}.tgz') as archive:
+    assert archive.extractfile('package/LICENSE').read().decode('utf-8-sig').strip() == license_text
+print('PASS: npm compiler identity, native targets, source/checksums, command bindings and MIT notice')
 
 
 def verify_zip(path, required, license_path):

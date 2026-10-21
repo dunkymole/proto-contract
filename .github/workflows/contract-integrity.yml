@@ -94,6 +94,14 @@ jobs:
       - name: Build packages, verify starter and run interoperability matrix
         run: pwsh ./scripts/test-packages.ps1
 
+      - name: Retain tested npm compiler for native host checks
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-native-${{ github.run_id }}
+          path: artifacts/packages/npm/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Verify inferred names against native protobuf generators
         run: pwsh ./scripts/test-naming.ps1
 
@@ -105,6 +113,34 @@ jobs:
         run: |
           docker compose --project-name "$COMPOSE_PROJECT_NAME" logs --no-color || true
           docker compose --project-name "$COMPOSE_PROJECT_NAME" down --remove-orphans || true
+
+  npm-native-smoke:
+    name: npm compiler native smoke (${{ matrix.os }})
+    needs: validate
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-native-${{ github.run_id }}
+          path: artifacts/npm-native
+      - name: Exercise installed native commands and plugin protocol
+        shell: pwsh
+        run: |
+          $package = @(Get-ChildItem -LiteralPath artifacts/npm-native -Filter '*.tgz')
+          if ($package.Count -ne 1) { throw 'Expected exactly one tested npm tarball' }
+          node npm/test-native-smoke.cjs $package[0].FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Native npm smoke failed' }
 
   release-dry-run:
     name: Dry run the next package version (no publication)
