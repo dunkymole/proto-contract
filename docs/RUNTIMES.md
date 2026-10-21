@@ -118,7 +118,7 @@ The metadata parser is deliberately bounded and portable; malformed or duplicate
 Run `./scripts/test-all.ps1` from the repository root in PowerShell for compiler lock checks, builds, all 20 combinations, and cleanup. Docker must run Linux containers. To run the clients manually in any shell:
 
 ```sh
-docker build -f packaging/Dockerfile --target artifacts --output type=local,dest=artifacts .
+pwsh ./scripts/build-packages.ps1
 docker compose build
 docker compose up -d go-server java-server dotnet-server python-server grpc-bridge
 docker compose run --rm -T python-client
