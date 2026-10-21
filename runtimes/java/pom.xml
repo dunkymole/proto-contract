@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.dunkymole</groupId>
   <artifactId>proto-contract-runtime</artifactId>
-  <version>0.5.0</version>
+  <version>0.6.0</version>
   <name>Proto Contract runtime</name>
   <description>Service-scoped gRPC contracts and strict server enforcement.</description>
   <url>https://github.com/dunkymole/proto-contract</url>

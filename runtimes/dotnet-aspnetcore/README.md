@@ -18,5 +18,5 @@ explicit exemptions, then map those services normally.
 
 Client-only applications need just `ProtoContract.Runtime` and the generated
 `Contract.CreateClient(channel)` helper. See the repository's runtime
-integration guide for the full build workflow. Package version 0.5.0 is
+integration guide for the full build workflow. Package version 0.6.0 is
 independent of each API's contract version.
