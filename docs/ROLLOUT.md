@@ -40,7 +40,7 @@ grpc-bridge package, checking a descriptor graph with imports, maps, defaults,
 enums, optional fields, and all four RPC shapes.
 
 The bridge source defaults to reviewed commit
-`200f417ce5b070d2c6e5214870a2b0887fa9058f`. To run this proof with another
+`56a7fc57078d4003553a4b0e5ec048c4bf9abef2` (the `v0.2.0` release). To run this proof with another
 companion commit, set `GRPC_BRIDGE_REF` before invoking the script; Compose
 forwards the same ref to the bridge and client images. The client build derives
 the local tarball integrity from the fetched artifact, then checks its

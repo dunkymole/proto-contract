@@ -19,7 +19,7 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPO = 'dunkymole/proto-contract'
 WORKFLOW = '.github/workflows/package-release.yml'
-BRIDGE = '87f0e1c86dcd53b64cd24948962ced5b3fc38f99'
+BRIDGE = '56a7fc57078d4003553a4b0e5ec048c4bf9abef2'
 
 _npm_spec = importlib.util.spec_from_file_location('npm_package', ROOT / 'packaging/npm_package.py')
 _npm_package = importlib.util.module_from_spec(_npm_spec)

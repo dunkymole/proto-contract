@@ -8,10 +8,10 @@ import { contractClientInterceptor } from "./runtime/proto-contract.js";
 import { contract, runtimeGraph } from "./gen/echo_contract.js";
 
 const servers = {
-  Go: "go-server:50051",
-  Java: "java-server:50053",
-  ".NET": "dotnet-server:50054",
-  Python: "python-server:50055",
+  Go: "go",
+  Java: "java",
+  ".NET": "dotnet",
+  Python: "python",
 };
 
 for (const [expected, target] of Object.entries(servers)) {

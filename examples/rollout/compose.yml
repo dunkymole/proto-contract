@@ -27,10 +27,10 @@ services:
       target: bridge
       args:
         GRPC_BRIDGE_REPOSITORY: ${GRPC_BRIDGE_REPOSITORY:-https://github.com/dunkymole/grpc-bridge.git}
-        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-200f417ce5b070d2c6e5214870a2b0887fa9058f}
+        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-56a7fc57078d4003553a4b0e5ec048c4bf9abef2}
     environment:
       LISTEN: 0.0.0.0:8080
-      UPSTREAM: rollout-new:50051
+      DEFAULT_TARGET: rollout-new
       TARGETS_FILE: /config/rollout-targets.json
     depends_on:
       - rollout-old
@@ -43,7 +43,7 @@ services:
       target: client
       args:
         GRPC_BRIDGE_REPOSITORY: ${GRPC_BRIDGE_REPOSITORY:-https://github.com/dunkymole/grpc-bridge.git}
-        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-200f417ce5b070d2c6e5214870a2b0887fa9058f}
+        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-56a7fc57078d4003553a4b0e5ec048c4bf9abef2}
     command: ["npm", "run", "rollout"]
     environment:
       BRIDGE_URL: ws://rollout-bridge:8080/tunnel
