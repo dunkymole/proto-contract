@@ -6,7 +6,9 @@ services:
       target: bridge
       args:
         GRPC_BRIDGE_REPOSITORY: ${GRPC_BRIDGE_REPOSITORY:-https://github.com/dunkymole/grpc-bridge.git}
-        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-87f0e1c86dcd53b64cd24948962ced5b3fc38f99}
+        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-56a7fc57078d4003553a4b0e5ec048c4bf9abef2}
+    environment:
+      DEFAULT_TARGET: go
   grpc-bridge-client:
     build:
       context: .
@@ -14,7 +16,7 @@ services:
       target: client
       args:
         GRPC_BRIDGE_REPOSITORY: ${GRPC_BRIDGE_REPOSITORY:-https://github.com/dunkymole/grpc-bridge.git}
-        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-87f0e1c86dcd53b64cd24948962ced5b3fc38f99}
+        GRPC_BRIDGE_REF: ${GRPC_BRIDGE_REF:-56a7fc57078d4003553a4b0e5ec048c4bf9abef2}
   dotnet-server:
     build:
       context: .

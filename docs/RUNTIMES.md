@@ -133,7 +133,7 @@ Stop and inspect a failing build/client command; run cleanup even after a failur
 
 ## TypeScript / grpc-bridge client
 
-Install the compiler and plugin with `npm install --save-dev @dunkymole/proto-contract@0.6.0`. Within an npm script, the commands are on `PATH`; let protoc discover `protoc-gen-proto-contract` there. Outside npm scripts, use `npx proto-contract` for compiler commands. `protoc` and the Protobuf-ES generator are separate tools. The npm package supplies build tooling only; the runtime still comes from grpc-bridge. Use the reviewed source package described below until that separate runtime is published to npm.
+Install the compiler and plugin with `npm install --save-dev @dunkymole/proto-contract@0.6.0`. Within an npm script, the commands are on `PATH`; let protoc discover `protoc-gen-proto-contract` there. Outside npm scripts, use `npx proto-contract` for compiler commands. `protoc` and the Protobuf-ES generator are separate tools. The npm package supplies build tooling only; install the separate `@dunkymole/grpc-bridge` runtime package.
 
 Proto Contract generates contract-bound clients for [grpc-bridge](https://github.com/dunkymole/grpc-bridge). The protoc plugin checks each lock against the exact descriptor request used to generate Protobuf-ES bindings, then imports and binds that service descriptor in the generated artifact. The runtime graph projection is tested against Protobuf-ES 2.15.0; use Connect 2.x, the strict grpc-bridge package entry, that Protobuf-ES version, and a supported browser or Node.js 24+.
 
@@ -156,7 +156,7 @@ import { contract as inventoryContract } from "./gen/inventory_contract.js";
 
 const shared = createSharedBridgeConnection({
   url: "wss://bridge.example.com/tunnel",
-  target: "orders.example:443",
+  target: "orders",
 });
 const lease = await shared.acquire();
 try {
@@ -169,13 +169,13 @@ try {
 }
 ```
 
-Use the same `connection.client(contract)` API with `openBridgeConnection` or `createBridgeConnection`. Contract configuration belongs to the generated client, not a shared connection. The main package entry does not expose a raw transport; generic transports remain under the explicit `/raw` escape hatch. Close connections, release shared leases, and dispose shared handles when their owner shuts down.
+Use the same `connection.client(contract)` API with `openBridgeConnection` or `createBridgeConnection`. The target is a logical label whose private address and TLS policy are owned by the bridge configuration; clients do not send backend addresses. Contract configuration belongs to the generated client, not a shared connection. The main package entry does not expose a raw transport; generic transports remain under the explicit `/raw` escape hatch. Close connections, release shared leases, and dispose shared handles when their owner shuts down.
 
 The generated artifact checks its imported Protobuf-ES descriptor graph at module initialization and the client guard validates each actual method before stamping metadata. It applies to unary and streaming calls, keeps separate service contracts isolated on a shared lease, and preserves metadata through retry handling. Native strict server dispatch enforces the corresponding server lock; the bridge only forwards bytes.
 
 The generic `contractClientInterceptor(api, version)` and `/raw` package entry are reserved for explicit negative/compatibility tests and migrations, not normal application clients.
 
-The [Docker example](../examples/clients/grpc-bridge/README.md) builds the unpublished bridge package from pinned source and tests TypeScript through the bridge against Go, Java, .NET, and Python servers.
+The [Docker example](../examples/clients/grpc-bridge/README.md) builds the bridge package from the pinned `v0.2.0` release source and tests TypeScript through the bridge against Go, Java, .NET, and Python servers.
 
 ## Python client
 

@@ -2,7 +2,7 @@
 FROM alpine:3.22 AS source
 RUN apk add --no-cache git
 ARG GRPC_BRIDGE_REPOSITORY=https://github.com/dunkymole/grpc-bridge.git
-ARG GRPC_BRIDGE_REF=200f417ce5b070d2c6e5214870a2b0887fa9058f
+ARG GRPC_BRIDGE_REF=56a7fc57078d4003553a4b0e5ec048c4bf9abef2
 RUN git init /bridge && cd /bridge && \
     git remote add origin "$GRPC_BRIDGE_REPOSITORY" && \
     git fetch --depth 1 origin "$GRPC_BRIDGE_REF" && git checkout --detach FETCH_HEAD
@@ -18,7 +18,7 @@ COPY --from=bridge-build /bridge /bridge
 COPY examples/clients/grpc-bridge/targets.json /config/targets.json
 COPY examples/rollout/targets.json /config/rollout-targets.json
 USER 65532:65532
-ENV LISTEN=0.0.0.0:8080 UPSTREAM=go-server:50051 TARGETS_FILE=/config/targets.json
+ENV LISTEN=0.0.0.0:8080 DEFAULT_TARGET=go TARGETS_FILE=/config/targets.json
 ENTRYPOINT ["/bridge"]
 
 FROM node:24-alpine AS package

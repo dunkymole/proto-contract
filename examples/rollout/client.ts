@@ -12,6 +12,11 @@ const destinations = {
   next: "rollout-new:50051",
   major: "rollout-major:50051",
 } as const;
+const targets = {
+  old: "rollout-old",
+  next: "rollout-new",
+  major: "rollout-major",
+} as const;
 const timeoutMs = 5_000;
 const callOptions = () => ({ timeoutMs, contextValues: createContextValues().set(waitForReady, true) });
 
@@ -80,13 +85,13 @@ assert.ok([v1_0, v1_1, v2_0].every((item) => item.api === "rollout.echo"));
 
 // This connection remains tied to the old endpoint after later dials select
 // different destinations; the bridge does not move an established tunnel.
-const pinnedOld = await openBridgeConnection({ url: bridge, target: destinations.old });
+const pinnedOld = await openBridgeConnection({ url: bridge, target: targets.old });
 openedConnections.push(pinnedOld);
 const oldClient = pinnedOld.client(v1_0);
 const oldInitial = await oldClient.echo({ text: "old", requestId: "before-rollout" }, callOptions());
 assert.equal(oldInitial.serverLanguage, "v1.0.0");
 
-const freshNext = await openBridgeConnection({ url: bridge, target: destinations.next });
+const freshNext = await openBridgeConnection({ url: bridge, target: targets.next });
 openedConnections.push(freshNext);
 const nextClient = freshNext.client(v1_1);
 const oldClientOnNext = freshNext.client(v1_0);
@@ -105,7 +110,7 @@ const firstStreamResponse = await streamIterator.next();
 if (firstStreamResponse.done) throw new Error("v1.1 bidi stream ended before the first response");
 assert.equal(firstStreamResponse.value.serverLanguage, "v1.1.0");
 
-const majorConnection = await openBridgeConnection({ url: bridge, target: destinations.major });
+const majorConnection = await openBridgeConnection({ url: bridge, target: targets.major });
 openedConnections.push(majorConnection);
 const majorClient = majorConnection.client(v2_0);
 const majorResponse = await majorClient.echo({ text: new TextEncoder().encode("major"), requestId: "separate-major" }, callOptions());
@@ -152,7 +157,7 @@ assert.equal(v1_1.version, "1.1.0", "server state must not be adopted into the g
 // containing the additive API fail clearly until the v1.1 server returns.
 const oldAfterRollback = await oldClient.echo({ text: "rollback-old-client", requestId: "rollback" }, callOptions());
 assert.equal(oldAfterRollback.serverLanguage, "v1.0.0");
-const rollbackDial = await openBridgeConnection({ url: bridge, target: destinations.old });
+const rollbackDial = await openBridgeConnection({ url: bridge, target: targets.old });
 openedConnections.push(rollbackDial);
 const redialedOld = await rollbackDial.client(v1_0).echo({ text: "fresh-rollback-dial", requestId: "rollback" }, callOptions());
 assert.equal(redialedOld.serverLanguage, "v1.0.0");

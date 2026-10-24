@@ -119,7 +119,7 @@ The commands below assume `proto-contract` is installed on your `PATH`, or defin
 
 ### TypeScript / grpc-bridge
 
-Generate a contract artifact from the same descriptors used for Protobuf-ES bindings. The plugin checks the complete lock before it writes the descriptor-bound artifact. `contracts/typescript-bindings.json` maps the service to its lock, output, and generated descriptor import:
+This example is verified with the latest published grpc-bridge release, [`@dunkymole/grpc-bridge` 0.2.0](https://github.com/dunkymole/grpc-bridge/releases/tag/v0.2.0). Generate a contract artifact from the same descriptors used for Protobuf-ES bindings. The plugin checks the complete lock before it writes the descriptor-bound artifact. `contracts/typescript-bindings.json` maps the service to its lock, output, and generated descriptor import:
 
 ```sh
 protoc -I proto \
@@ -141,7 +141,7 @@ import { contract } from "./gen/echo_contract.js";
 
 const connection = await openBridgeConnection({
   url: "wss://bridge.example.com/tunnel",
-  target: "echo-service:50051",
+  target: "echo",
 });
 try {
   const client = connection.client(contract);
@@ -152,7 +152,7 @@ try {
 }
 ```
 
-This also works with `createBridgeConnection` and leases from `createSharedBridgeConnection`. Each contract client stays isolated on the shared connection. The generated artifact binds the actual Protobuf-ES service descriptor, lock fingerprint, and runtime graph; a stale protobuf binding fails during artifact creation. Lock-only TypeScript generation is rejected. See the [runnable grpc-bridge example](examples/clients/grpc-bridge/README.md) and [runtime details](docs/RUNTIMES.md#typescript--grpc-bridge-client).
+`target` is a logical backend label configured by the bridge operator, not a host or address. The bridge resolves `echo` to its private address and TLS policy. This also works with `createBridgeConnection` and leases from `createSharedBridgeConnection`. Each contract client stays isolated on the shared connection. The generated artifact binds the actual Protobuf-ES service descriptor, lock fingerprint, and runtime graph; a stale protobuf binding fails during artifact creation. Lock-only TypeScript generation is rejected. See the [runnable grpc-bridge example](examples/clients/grpc-bridge/README.md) and [runtime details](docs/RUNTIMES.md#typescript--grpc-bridge-client).
 
 Regenerate when the client's contract lock changes. The generated module embeds that build's contract version; it must not read a deployed server's current version at runtime. Explicit versions in the interoperability tests are test fixtures for compatible and incompatible clients.
 

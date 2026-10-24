@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $previousBridgeRef = $env:GRPC_BRIDGE_REF
 $previousComposeProject = $env:COMPOSE_PROJECT_NAME
-if (-not $env:GRPC_BRIDGE_REF) { $env:GRPC_BRIDGE_REF = '87f0e1c86dcd53b64cd24948962ced5b3fc38f99' }
+if (-not $env:GRPC_BRIDGE_REF) { $env:GRPC_BRIDGE_REF = '56a7fc57078d4003553a4b0e5ec048c4bf9abef2' }
 if (-not $env:COMPOSE_PROJECT_NAME) { $env:COMPOSE_PROJECT_NAME = "pc-packages-$PID" }
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
